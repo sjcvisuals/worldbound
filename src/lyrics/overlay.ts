@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { FullScreenQuad } from "three/examples/jsm/postprocessing/Pass.js";
 import type { LyricLine, LyricsMapMode, Screen } from "../types";
 import { layoutSpan, sliceFor, type SpanLayout } from "./layout";
-import { packWordsInBands, wipeX, type PackBand, type PackedWord } from "./pack";
+import { packWordsInBands, uniqueBands, wipeX, type PackBand, type PackedWord } from "./pack";
 import { activeLyric, karaokeProgress } from "./parse";
 
 const VERT = /* glsl */ `
@@ -97,7 +97,7 @@ export class LyricsOverlay {
       this.layout = {
         totalWidth: 16,
         maxHeight: 9,
-        slices: members.map((s) => ({ screenId: s.id, x: 0, y: 0, w: 1, h: 1 })),
+        slices: [{ screenId: members[0]?.id ?? "each", x: 0, y: 0, w: 1, h: 1 }],
       };
     } else {
       this.layout = layoutSpan(members);
@@ -286,5 +286,7 @@ export class LyricsOverlay {
 
 function bandsFor(mode: LyricsMapMode, layout: SpanLayout | null, atlasW: number): PackBand[] {
   if (mode === "each" || !layout?.slices.length) return [{ x0: 0, x1: atlasW }];
-  return layout.slices.map((s) => ({ x0: s.x * atlasW, x1: (s.x + s.w) * atlasW }));
+  return uniqueBands(
+    layout.slices.map((s) => ({ x0: s.x * atlasW, x1: (s.x + s.w) * atlasW }))
+  );
 }

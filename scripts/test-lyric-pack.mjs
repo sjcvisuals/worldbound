@@ -7,6 +7,7 @@ import {
   allocateWordCounts,
   assignWordsToScreens,
   packWordsInBands,
+  uniqueBands,
   wipeX,
 } from "../src/lyrics/pack.ts";
 
@@ -79,6 +80,31 @@ ok(
   "wipe 0.5 is inside second half of line",
   mid >= packed[1].x && mid <= packed[2].x + packed[2].width
 );
+
+eq("uniqueBands collapses duplicate full-width rects", uniqueBands([
+  { x0: 0, x1: 1000 },
+  { x0: 0, x1: 1000 },
+  { x0: 0, x1: 1000 },
+]), [{ x0: 0, x1: 1000 }]);
+
+const eachPacked = packWordsInBands(
+  words,
+  widths,
+  space,
+  [
+    { x0: 0, x1: 1000 },
+    { x0: 0, x1: 1000 },
+    { x0: 0, x1: 1000 },
+  ]
+);
+ok("each-mode duplicate bands still fit", !eachPacked.overflow);
+eq(
+  "each-mode keeps one copy of each word",
+  eachPacked.packed.map((p) => p.word),
+  words
+);
+const xs = eachPacked.packed.map((p) => p.x);
+ok("each-mode words do not all start at the same x (not stacked)", new Set(xs).size === words.length);
 
 if (failed) {
   console.error(`\n${failed} failed`);

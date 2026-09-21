@@ -61,12 +61,26 @@ export function assignWordsToScreens(words: string[], weights: number[]): string
  * Place each screen's words centred in its band, inset so glyphs never sit on
  * the bezel. `overflow` is true when the current font is too wide for a band.
  */
+/** Drop duplicate atlas bands (Each-mode used to pass one 0–1 rect per wall). */
+export function uniqueBands(bands: PackBand[]): PackBand[] {
+  const seen = new Set<string>();
+  const out: PackBand[] = [];
+  for (const b of bands) {
+    const key = `${b.x0.toFixed(3)}:${b.x1.toFixed(3)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(b);
+  }
+  return out;
+}
+
 export function packWordsInBands(
   words: string[],
   widths: number[],
   space: number,
   bands: PackBand[]
 ): { packed: PackedWord[]; overflow: boolean } {
+  bands = uniqueBands(bands);
   const weights = bands.map((b) => Math.max(0, b.x1 - b.x0));
   const counts = allocateWordCounts(words.length, weights);
   const packed: PackedWord[] = [];
