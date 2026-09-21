@@ -1,0 +1,10 @@
+{
+  "name": "Worldbound",
+  "install": "npm ci && npm run gen:demo-track",
+  "terminals": [
+    {
+      "name": "dev-server",
+      "command": "npm run dev"
+    }
+  ]
+}
