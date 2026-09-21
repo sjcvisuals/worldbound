@@ -56,6 +56,16 @@ function RenderDriver() {
     lastPlay.current = playhead;
 
     engine.world.pulse(Math.min(dt, 0.05), sampleEnergy(playhead), beat);
+    engine.setLyricsFrame({
+      enabled: st.lyrics.enabled,
+      mode: st.lyrics.mode,
+      lines: st.lyrics.lines,
+      playhead,
+      karaoke: st.lyrics.karaoke,
+      showNext: st.lyrics.showNext,
+      fill: generation.palette[0] ?? "#00b3ff",
+      beat: engine.world.uniforms.uBeat.value,
+    });
     engine.renderScreens(gl, screens, groups, viewpoint);
   }, 0);
 

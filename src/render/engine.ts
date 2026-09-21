@@ -3,6 +3,7 @@ import type { Screen, ScreenGroup, Viewpoint, VisualEngine } from "../types";
 import { ContentWorld } from "./world";
 import { CinemaWorld } from "./cinema/scene";
 import { PostStack } from "./cinema/post";
+import { LyricsOverlay, type LyricsFrame } from "../lyrics/overlay";
 
 const DEFAULT_PROGRAM_HEIGHT = 384;
 
@@ -25,6 +26,8 @@ class Engine {
   readonly volumetric = new ContentWorld();
   readonly cinema = new CinemaWorld();
   look: VisualEngine = "cinema";
+  readonly lyrics = new LyricsOverlay();
+  private lyricsFrame: LyricsFrame | null = null;
   private post = new PostStack();
   private targets = new Map<string, ScreenTarget>();
   private exportTarget: ScreenTarget | null = null;
@@ -61,6 +64,10 @@ class Engine {
 
   setLook(look: VisualEngine) {
     this.look = look;
+  }
+
+  setLyricsFrame(frame: LyricsFrame | null) {
+    this.lyricsFrame = frame;
   }
 
   setRenderer(gl: THREE.WebGLRenderer) {
@@ -220,10 +227,10 @@ class Engine {
     gl.getViewport(this.vpScratch);
     const groupMap = new Map(groups.map((g) => [g.id, g]));
     const membersByGroup = new Map<string, Screen[]>();
-    for (const s of screens) {
-      const arr = membersByGroup.get(s.groupId) ?? [];
-      arr.push(s);
-      membersByGroup.set(s.groupId, arr);
+    for (const screen of screens) {
+      const arr = membersByGroup.get(screen.groupId) ?? [];
+      arr.push(screen);
+      membersByGroup.set(screen.groupId, arr);
     }
 
     for (const screen of screens) {
@@ -234,10 +241,15 @@ class Engine {
         ...(override ?? viewpoint.position)
       );
 
+      const members = membersByGroup.get(screen.groupId) ?? [screen];
+      if (this.lyricsFrame) {
+        this.lyrics.sync(screen.groupId, members, this.lyricsFrame, target.height);
+      }
+
       this.drawScreen(
         gl,
         screen,
-        membersByGroup.get(screen.groupId) ?? [screen],
+        members,
         group,
         target,
         target.width,
@@ -279,6 +291,12 @@ class Engine {
       time: this.world.uniforms.uTime.value,
       grain,
     });
+    const lyr = this.lyricsFrame;
+    if (lyr && lyr.enabled && lyr.mode !== "off" && lyr.lines.length) {
+      gl.setRenderTarget(dst);
+      gl.setViewport(0, 0, width, height);
+      this.lyrics.composite(gl, screen, lyr.mode);
+    }
   }
 
   /** Copy a screen target into a 2D canvas for the preview panel. */
@@ -345,6 +363,10 @@ class Engine {
 
     const prevTarget = gl.getRenderTarget();
     gl.getViewport(this.vpScratch);
+
+    if (this.lyricsFrame) {
+      this.lyrics.sync(screen.groupId, members.length ? members : [screen], this.lyricsFrame, height);
+    }
 
     this.drawScreen(gl, screen, members.length ? members : [screen], group, target, width, height);
 

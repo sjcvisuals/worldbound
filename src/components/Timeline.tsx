@@ -27,6 +27,7 @@ export function Timeline({
 }) {
   const audio = useStore((s) => s.audio);
   const loops = useStore((s) => s.loops);
+  const lyrics = useStore((s) => s.lyrics);
   const playhead = useStore((s) => s.playhead);
   const playing = useStore((s) => s.playing);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -130,6 +131,18 @@ export function Timeline({
             </div>
           )}
         </div>
+        {lyrics.lines.length > 0 && duration > 0 && (
+          <div className="tl-lyrics" title="Lyric lines">
+            {lyrics.lines.map((l, i) => (
+              <div
+                key={`${l.startSec}-${i}`}
+                className="lyric-tick"
+                style={{ left: (l.startSec / duration) * width }}
+                title={`${fmt(l.startSec)} ${l.text}`}
+              />
+            ))}
+          </div>
+        )}
         <div className="tl-wave">
           <canvas ref={canvasRef} style={{ width: "100%", height: 96, display: "block" }} />
         </div>

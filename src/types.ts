@@ -141,6 +141,29 @@ export interface LoopVisual {
   motif: string;
 }
 
+export type LyricsMapMode = "span" | "each" | "off";
+
+export interface LyricWord {
+  startSec: number;
+  text: string;
+}
+
+export interface LyricLine {
+  startSec: number;
+  endSec: number;
+  text: string;
+  words?: LyricWord[];
+}
+
+export interface LyricsState {
+  source: string;
+  lines: LyricLine[];
+  enabled: boolean;
+  mode: LyricsMapMode;
+  karaoke: boolean;
+  showNext: boolean;
+}
+
 export type GizmoMode = "translate" | "rotate" | "scale" | "eye";
 
 export type ExportQuality = "preview" | "delivery" | "full";
@@ -175,4 +198,5 @@ export interface ProjectState {
   audio: AudioTrack | null;
   generation: GenerationParams;
   loops: ContentLoop[];
+  lyrics: LyricsState;
 }

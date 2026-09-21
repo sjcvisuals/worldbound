@@ -139,6 +139,16 @@ export async function runExport(opts: {
           const worldT = job.loop.startSec + t;
           engine.world.setTime(t, job.loop.lengthSec);
           engine.world.setPulse(energyAt(analysis, worldT), beatAt(analysis, worldT, 1 / fps));
+          engine.setLyricsFrame({
+            enabled: st.lyrics.enabled,
+            mode: st.lyrics.mode,
+            lines: st.lyrics.lines,
+            playhead: worldT,
+            karaoke: st.lyrics.karaoke,
+            showNext: st.lyrics.showNext,
+            fill: job.loop.visual.palette[0] ?? "#00b3ff",
+            beat: beatAt(analysis, worldT, 1 / fps),
+          });
           engine.renderExportFrame(
             opts.gl,
             job.screen,

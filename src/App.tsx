@@ -6,6 +6,7 @@ import { SceneTree } from "./components/SceneTree";
 import { ScreenInspector } from "./components/ScreenInspector";
 import { ViewpointPanel } from "./components/ViewpointPanel";
 import { AudioPanel } from "./components/AudioPanel";
+import { LyricsPanel } from "./components/LyricsPanel";
 import { GenerationPanel } from "./components/GenerationPanel";
 import { OutputPanel } from "./components/OutputPanel";
 import { Timeline } from "./components/Timeline";
@@ -112,6 +113,7 @@ export function App() {
       </div>
       <div className="sidebar right">
         <AudioPanel />
+        <LyricsPanel />
         <GenerationPanel />
         <OutputPanel />
       </div>

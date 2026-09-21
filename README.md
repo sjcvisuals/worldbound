@@ -71,6 +71,19 @@ with **ProRes** and **H.264**), bit depth (**8** default, 10/12/16).
 H.264 is always produced in-browser. If the encode sidecar is running, ProRes /
 NotchLC-stand-in transcode happens automatically.
 
+## Lyrics across screens
+
+LED lyrics should **not** live in the 3D plates — perspective warps letters
+between walls. Worldbound draws timed type onto a **spanning atlas** unfolded
+left→right by each screen's physical width, then crops that atlas onto every
+feed. The cinema look still parallaxes in 3D; the words read as one surface.
+
+- Paste **LRC** (`[mm:ss.xx]line`) or plain text (auto-timed to the track)
+- **Span group** (default): one line across the array
+- **Each screen**: the same full line on every wall
+- **Karaoke wipe** fills the current line in time with the audio
+- Demo track auto-loads demo lyrics
+
 ## High-end visuals (AE / Notch replacement)
 
 Live-event content is usually **2D and heavy**, not a 3D game world. Worldbound
@@ -152,6 +165,7 @@ src/
     world.ts              volumetric 3D world (optional look)
     engine.ts             nDisplay bake + post
     exportPipeline.ts     offline baked-clip renderer
+  lyrics/                 timed LRC, span layout, overlay
   live/                   program pop-out windows (web NDI stand-in)
   components/             stage gizmos, timeline, panels
 scripts/encode-server.mjs

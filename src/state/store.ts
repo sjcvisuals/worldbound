@@ -6,6 +6,7 @@ import type {
   ExportProgress,
   GenerationParams,
   GizmoMode,
+  LyricsState,
   OutputSettings,
   ProjectState,
   Screen,
@@ -13,6 +14,7 @@ import type {
   Vec3,
   Viewpoint,
 } from "../types";
+import { parseLyrics } from "../lyrics/parse";
 
 let idCounter = 1;
 export const uid = (prefix: string) => `${prefix}-${idCounter++}`;
@@ -73,6 +75,15 @@ const defaultOutput: OutputSettings = {
   bitDepth: 8,
 };
 
+const defaultLyrics: LyricsState = {
+  source: "",
+  lines: [],
+  enabled: true,
+  mode: "span",
+  karaoke: true,
+  showNext: true,
+};
+
 const defaultGeneration: GenerationParams = {
   prompt:
     "Create visuals that react to the tempo and beats, with an electric blue theme and graphics of angels descending into hell. Start, build, chorus, big finish.",
@@ -124,6 +135,8 @@ export interface Store extends ProjectState {
   updateGeneration: (patch: Partial<GenerationParams>) => void;
   setGenerating: (g: boolean) => void;
   setLoops: (loops: ContentLoop[]) => void;
+  updateLyrics: (patch: Partial<LyricsState>) => void;
+  setLyricsSource: (source: string, duration: number, barSec?: number) => void;
 
   // export
   setExportProgress: (p: Partial<ExportProgress>) => void;
@@ -141,6 +154,7 @@ export const useStore = create<Store>((set) => ({
   audio: null,
   generation: defaultGeneration,
   loops: [],
+  lyrics: defaultLyrics,
 
   selectedScreenId: "screen-center",
   playhead: 0,
@@ -239,6 +253,17 @@ export const useStore = create<Store>((set) => ({
 
   setGenerating: (isGenerating) => set({ isGenerating }),
   setLoops: (loops) => set({ loops }),
+
+  updateLyrics: (patch) => set((s) => ({ lyrics: { ...s.lyrics, ...patch } })),
+  setLyricsSource: (source, duration, barSec = 2) =>
+    set((s) => ({
+      lyrics: {
+        ...s.lyrics,
+        source,
+        lines: parseLyrics(source, duration, barSec),
+        enabled: true,
+      },
+    })),
 
   setExportProgress: (p) =>
     set((s) => ({ exportProgress: { ...s.exportProgress, ...p } })),

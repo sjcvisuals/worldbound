@@ -196,6 +196,11 @@ input[type="range"] {
   padding: 4px 8px;
   font-size: 11px;
 }
+.btn.on {
+  border-color: var(--accent);
+  color: var(--accent-2);
+  background: rgba(0, 179, 255, 0.15);
+}
 .btn.danger:hover {
   border-color: var(--danger);
   color: var(--danger);
@@ -272,6 +277,30 @@ input[type="range"] {
   height: 58px;
   position: relative;
   border-bottom: 1px solid var(--border);
+}
+.lyric-strip {
+  width: 100%;
+  height: 44px;
+  display: block;
+  margin-top: 8px;
+  background: #000;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  object-fit: fill;
+}
+.lyric-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(255, 210, 80, 0.7);
+  pointer-events: none;
+}
+.tl-lyrics {
+  height: 18px;
+  position: relative;
+  border-bottom: 1px solid var(--border);
+  background: #050814;
 }
 .tl-wave {
   height: 96px;
