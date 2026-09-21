@@ -71,13 +71,30 @@ with **ProRes** and **H.264**), bit depth (**8** default, 10/12/16).
 H.264 is always produced in-browser. If the encode sidecar is running, ProRes /
 NotchLC-stand-in transcode happens automatically.
 
-## Generation models
+## High-end visuals (AE / Notch replacement)
 
-Everything shippable in the lightweight browser session uses the built-in
-**Worldbound Procedural** generator (real-time GLSL, beat-synced, theme-aware —
-zero dependencies). The model registry is ready to drive **open-source** video
-models (AnimateDiff, Stable Video Diffusion, Deforum) from a GPU render backend;
-those are listed and marked "backend required" until that service is connected.
+Live-event content is usually **2D and heavy**, not a 3D game world. Worldbound
+stays a **browser show tool**. The default look is **Cinema 2.5D**:
+
+- A stack of full-bleed plates parked *behind* the LED walls (nebula / hell
+  mouth, descending angels, embers) — the same idea as an After Effects comp
+  with layers in Z.
+- Each physical screen is still an nDisplay camera, so the 2D plates **parallax
+  across walls** when the group is in 3D mode. Flat groups composite as one 2D
+  surface.
+- A grade on every feed: bloom, anamorphic streak, chromatic aberration, grain,
+  vignette.
+
+That’s the in-browser path toward Notch/AE density, and it exports as real
+H.264/ProRes.
+
+**Volumetric 3D** remains available for particle/volume worlds.
+
+**Diffusion plates** (AnimateDiff, CogVideoX, SVD) are an optional GPU worker
+(`npm run gpu-worker` + ComfyUI on an NVIDIA box). See `workers/README.md`.
+The UI never requires a GPU.
+
+## Generation models
 
 ## Tech
 
@@ -110,28 +127,28 @@ Then: **Load demo track** → **Generate content for full track** → **Play**.
 | `npm run typecheck` | `tsc` type-check only |
 | `npm run gen:demo-track` | Generate the demo audio track |
 | `npm run encode-server` | ffmpeg sidecar (ProRes / NotchLC-stand-in) on :8787 |
+| `npm run gpu-worker` | Optional ComfyUI front-end (diffusion plates) on :8788 |
 
 ## Project layout
 
 ```
 src/
   audio/analyze.ts        Web Audio BPM/beat/energy/section analysis
-  generation/             model registry, prompt parsing, loop generator
+  generation/             models, prompt parsing, loop generator, GPU client
   render/
-    world.ts              shared 3D content world (seamless looping GLSL)
-    engine.ts             per-screen off-axis (3D) + ortho (flat) rendering
+    cinema/               AE-style 2.5D plates + bloom/CA grade
+    world.ts              volumetric 3D world (optional look)
+    engine.ts             nDisplay bake + post
     exportPipeline.ts     offline baked-clip renderer
-    encodeMp4.ts          WebCodecs H.264 + mp4-muxer
-    zipStore.ts           zip writer for multi-clip download
-  components/             stage gizmos, timeline, panels, per-screen preview
-  state/store.ts          zustand project state
-scripts/generate-demo-track.mjs
+  components/             stage gizmos, timeline, panels
 scripts/encode-server.mjs
+scripts/gpu-worker.mjs
+workers/comfyui/plate_loop.json
 ```
 
 ## Roadmap
 
-- GPU render backend for open-source diffusion video models (AnimateDiff / SVD / Deforum)
+- Wire gpu-worker POST /prompt fully against a live ComfyUI + CogVideoX box
 - Native NotchLC encoder (currently ProRes 4444 stand-in)
 - Spout/NDI live output to media servers
 - Warp/blend for curved walls

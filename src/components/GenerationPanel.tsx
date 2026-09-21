@@ -53,7 +53,16 @@ export function GenerationPanel() {
 
       <div className="row" style={{ marginTop: 8 }}>
         <label>Model</label>
-        <select value={generation.modelId} onChange={(e) => update({ modelId: e.target.value })}>
+        <select
+          value={generation.modelId}
+          onChange={(e) => {
+            const id = e.target.value;
+            update({
+              modelId: id,
+              visualEngine: id === "volumetric" ? "volumetric" : "cinema",
+            });
+          }}
+        >
           {GENERATION_MODELS.map((m) => (
             <option key={m.id} value={m.id}>
               {m.label}
@@ -63,6 +72,31 @@ export function GenerationPanel() {
         </select>
       </div>
       <div className="hint">{model.description}</div>
+
+      <div className="row" style={{ marginTop: 8 }}>
+        <label>Look</label>
+        <div className="toggle">
+          <button
+            className={generation.visualEngine === "cinema" ? "on" : ""}
+            onClick={() => update({ visualEngine: "cinema", modelId: generation.modelId === "volumetric" ? "cinema" : generation.modelId })}
+            title="AE-style 2.5D plates with parallax, bloom and grain"
+          >
+            Cinema 2.5D
+          </button>
+          <button
+            className={generation.visualEngine === "volumetric" ? "on" : ""}
+            onClick={() => update({ visualEngine: "volumetric", modelId: "volumetric" })}
+            title="True 3D volume world (Notch-like particles)"
+          >
+            Volumetric 3D
+          </button>
+        </div>
+      </div>
+      <div className="hint">
+        Live-event content is usually 2D and heavy. Cinema stacks plates in depth (nebula / angels /
+        embers) like an After Effects comp, then bakes them through your LED cameras so they still
+        parallax across screens.
+      </div>
 
       <div style={{ marginTop: 8 }}>
         <Slider
@@ -101,8 +135,9 @@ export function GenerationPanel() {
       </button>
       {!model.available && (
         <div className="hint" style={{ marginTop: 6 }}>
-          This open-source model runs on the Worldbound render backend (GPU). Use the built-in
-          procedural model for the lightweight in-browser workflow.
+          This open-source model runs on a GPU worker (ComfyUI). Cinema plates
+          stay in the browser and already produce a heavy live-event look — use
+          those until a GPU box is connected.
         </div>
       )}
       <div className="gen-status">{status}</div>

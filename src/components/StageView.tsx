@@ -26,6 +26,7 @@ function RenderDriver() {
     if (st.exportProgress.active) return;
     const { screens, groups, viewpoint, loops, playhead, generation } = st;
 
+    engine.setLook(generation.visualEngine === "volumetric" ? "volumetric" : "cinema");
     const active = loops.find((l) => playhead >= l.startSec && playhead < l.endSec);
     if (active) {
       engine.world.applyLoopVisual(active.visual);

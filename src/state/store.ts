@@ -76,7 +76,8 @@ const defaultOutput: OutputSettings = {
 const defaultGeneration: GenerationParams = {
   prompt:
     "Create visuals that react to the tempo and beats, with an electric blue theme and graphics of angels descending into hell. Start, build, chorus, big finish.",
-  modelId: "procedural",
+  modelId: "cinema",
+  visualEngine: "cinema",
   palette: ["#00b3ff", "#0044ff", "#7df9ff", "#0a0f2c", "#ff2d55"],
   targetLoopSeconds: 24,
   targetLoopCount: 8,

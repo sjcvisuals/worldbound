@@ -13,6 +13,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/encode/, ""),
       },
+      "/gpu": {
+        target: "http://127.0.0.1:8788",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/gpu/, ""),
+      },
     },
   },
   preview: {

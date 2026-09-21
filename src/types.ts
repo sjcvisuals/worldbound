@@ -94,9 +94,13 @@ export interface GenerationModel {
   openSource: boolean;
 }
 
+export type VisualEngine = "cinema" | "volumetric";
+
 export interface GenerationParams {
   prompt: string;
   modelId: string;
+  /** How plates are authored: AE-style 2.5D cinema (default) or volumetric 3D. */
+  visualEngine: VisualEngine;
   /** Extracted / chosen theme palette (hex colours). */
   palette: string[];
   /** Target seconds per loop (loops are quantised to whole bars for seamlessness). */

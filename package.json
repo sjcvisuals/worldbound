@@ -10,7 +10,8 @@
     "preview": "vite preview --host 0.0.0.0 --port 4173",
     "typecheck": "tsc -b --noEmit",
     "gen:demo-track": "node scripts/generate-demo-track.mjs",
-    "encode-server": "node scripts/encode-server.mjs"
+    "encode-server": "node scripts/encode-server.mjs",
+    "gpu-worker": "node scripts/gpu-worker.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^9.114.3",

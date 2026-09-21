@@ -1,0 +1,55 @@
+{
+  "_comment": "ComfyUI API workflow for a looping master plate. Load this in ComfyUI on a GPU box, or POST it to /prompt after patching the CLIP text, seed, width, height, and frame count. Worldbound then reprojects the resulting MP4 through nDisplay cameras.",
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": { "ckpt_name": "sd_xl_base_1.0.safetensors" }
+  },
+  "2": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["1", 1],
+      "text": "cinematic LED content, electric blue, angels descending into hell, volumetric god rays, seamless loop, dark negative space, rec709,  --PROMPT--"
+    }
+  },
+  "3": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["1", 1],
+      "text": "text, watermark, logo, blurry, overexposed, jpeg artifacts"
+    }
+  },
+  "4": {
+    "class_type": "EmptyLatentImage",
+    "inputs": { "width": 1280, "height": 720, "batch_size": 16 }
+  },
+  "5": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["1", 0],
+      "positive": ["2", 0],
+      "negative": ["3", 0],
+      "latent_image": ["4", 0],
+      "seed": 0,
+      "steps": 20,
+      "cfg": 6.5,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1.0
+    }
+  },
+  "6": {
+    "class_type": "VAEDecode",
+    "inputs": { "samples": ["5", 0], "vae": ["1", 2] }
+  },
+  "7": {
+    "class_type": "SaveAnimatedWEBP",
+    "inputs": {
+      "images": ["6", 0],
+      "filename_prefix": "worldbound_plate",
+      "fps": 12,
+      "lossless": false,
+      "quality": 85,
+      "method": "default"
+    }
+  }
+}

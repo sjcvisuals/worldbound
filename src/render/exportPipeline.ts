@@ -120,6 +120,7 @@ export async function runExport(opts: {
         total: totalFrames,
       });
 
+      engine.setLook(st.generation.visualEngine === "volumetric" ? "volumetric" : "cinema");
       engine.world.applyLoopVisual(job.loop.visual);
 
       const mp4 = await encodeH264Mp4({

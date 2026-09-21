@@ -1,8 +1,10 @@
 import * as THREE from "three";
-import type { Screen, ScreenGroup, Viewpoint } from "../types";
+import type { Screen, ScreenGroup, Viewpoint, VisualEngine } from "../types";
 import { ContentWorld } from "./world";
+import { CinemaWorld } from "./cinema/scene";
+import { PostStack } from "./cinema/post";
 
-const PREVIEW_HEIGHT = 260; // internal render height for live preview/stage maps
+const PREVIEW_HEIGHT = 320;
 
 interface ScreenTarget {
   target: THREE.WebGLRenderTarget;
@@ -20,7 +22,10 @@ interface ScreenTarget {
  *    combined bounds, so 2D content maps across the screens as one surface.
  */
 class Engine {
-  readonly world = new ContentWorld();
+  readonly volumetric = new ContentWorld();
+  readonly cinema = new CinemaWorld();
+  look: VisualEngine = "cinema";
+  private post = new PostStack();
   private targets = new Map<string, ScreenTarget>();
   private exportTarget: ScreenTarget | null = null;
   private offAxisCam = new THREE.Camera();
@@ -46,6 +51,14 @@ class Engine {
 
   constructor() {
     this.offAxisCam.matrixAutoUpdate = false;
+  }
+
+  get world(): ContentWorld | CinemaWorld {
+    return this.look === "cinema" ? this.cinema : this.volumetric;
+  }
+
+  setLook(look: VisualEngine) {
+    this.look = look;
   }
 
   setRenderer(gl: THREE.WebGLRenderer) {
@@ -194,6 +207,7 @@ class Engine {
   ) {
     this.gl = gl;
     const prevTarget = gl.getRenderTarget();
+    gl.getViewport(this.vpScratch);
     const groupMap = new Map(groups.map((g) => [g.id, g]));
     const membersByGroup = new Map<string, Screen[]>();
     for (const s of screens) {
@@ -210,17 +224,51 @@ class Engine {
         ...(override ?? viewpoint.position)
       );
 
-      if (group && group.mode === "flat") {
-        this.setupFlat(screen, membersByGroup.get(screen.groupId) ?? [screen]);
-        gl.setRenderTarget(target);
-        gl.render(this.world.scene, this.orthoCam);
-      } else {
-        this.setupOffAxis(screen, this.eye);
-        gl.setRenderTarget(target);
-        gl.render(this.world.scene, this.offAxisCam);
-      }
+      this.drawScreen(
+        gl,
+        screen,
+        membersByGroup.get(screen.groupId) ?? [screen],
+        group,
+        target,
+        target.width,
+        target.height
+      );
     }
+    gl.setViewport(this.vpScratch.x, this.vpScratch.y, this.vpScratch.z, this.vpScratch.w);
     gl.setRenderTarget(prevTarget);
+  }
+
+  private drawScreen(
+    gl: THREE.WebGLRenderer,
+    screen: Screen,
+    members: Screen[],
+    group: ScreenGroup | undefined,
+    dst: THREE.WebGLRenderTarget,
+    width: number,
+    height: number
+  ) {
+    this.post.ensure(width, height);
+    if (group && group.mode === "flat") {
+      this.setupFlat(screen, members);
+      gl.setRenderTarget(this.post.raw);
+      gl.setViewport(0, 0, width, height);
+      gl.clear();
+      gl.render(this.world.scene, this.orthoCam);
+    } else {
+      this.setupOffAxis(screen, this.eye);
+      gl.setRenderTarget(this.post.raw);
+      gl.setViewport(0, 0, width, height);
+      gl.clear();
+      gl.render(this.world.scene, this.offAxisCam);
+    }
+    const bloom = this.look === "cinema" ? 0.9 : 0.55;
+    const grain = this.look === "cinema" ? 0.05 : 0.03;
+    this.post.apply(gl, dst, {
+      bloom,
+      beat: this.world.uniforms.uBeat.value,
+      time: this.world.uniforms.uTime.value,
+      grain,
+    });
   }
 
   /** Copy a screen target into a 2D canvas for the preview panel. */
@@ -287,18 +335,11 @@ class Engine {
 
     const prevTarget = gl.getRenderTarget();
     gl.getViewport(this.vpScratch);
-    gl.setRenderTarget(target);
-    gl.setViewport(0, 0, width, height);
 
-    if (group && group.mode === "flat") {
-      this.setupFlat(screen, members.length ? members : [screen]);
-      gl.render(this.world.scene, this.orthoCam);
-    } else {
-      this.setupOffAxis(screen, this.eye);
-      gl.render(this.world.scene, this.offAxisCam);
-    }
+    this.drawScreen(gl, screen, members.length ? members : [screen], group, target, width, height);
 
     const buf = new Uint8Array(width * height * 4);
+    gl.setRenderTarget(target);
     gl.readRenderTargetPixels(target, 0, 0, width, height, buf);
     gl.setViewport(this.vpScratch.x, this.vpScratch.y, this.vpScratch.z, this.vpScratch.w);
     gl.setRenderTarget(prevTarget);
