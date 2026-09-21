@@ -45,9 +45,11 @@ export function PreviewPanel() {
 
   function fullscreen(screenId: string) {
     const canvas = canvasRefs.current.get(screenId);
-    if (!canvas) return;
-    if (document.fullscreenElement === canvas) document.exitFullscreen().catch(() => undefined);
-    else canvas.requestFullscreen().catch(() => undefined);
+    const cell = canvas?.closest(".preview-cell") as HTMLElement | null;
+    const el = cell ?? canvas;
+    if (!el) return;
+    if (document.fullscreenElement === el) document.exitFullscreen().catch(() => undefined);
+    else el.requestFullscreen().catch(() => undefined);
   }
 
   void liveTick;
