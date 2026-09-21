@@ -76,10 +76,11 @@ NotchLC-stand-in transcode happens automatically.
 LED lyrics should **not** live in the 3D plates — perspective warps letters
 between walls. Worldbound draws timed type onto a **spanning atlas** unfolded
 left→right by each screen's physical width, then crops that atlas onto every
-feed. The cinema look still parallaxes in 3D; the words read as one surface.
+feed. The cinema look still parallaxes in 3D; the words read as one 2D surface.
 
 - Paste **LRC** (`[mm:ss.xx]line`) or plain text (auto-timed to the track)
-- **Span group** (default): one line across the array
+- **Span group** (default): one line across the array. Whole words are assigned
+  to walls by physical width so bezels fall *between* words, never through a glyph.
 - **Each screen**: the same full line on every wall
 - **Karaoke wipe** fills the current line in time with the audio
 - Demo track auto-loads demo lyrics

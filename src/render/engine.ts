@@ -233,6 +233,7 @@ class Engine {
       membersByGroup.set(screen.groupId, arr);
     }
 
+    const lyricsSynced = new Set<string>();
     for (const screen of screens) {
       const group = groupMap.get(screen.groupId);
       const target = this.getTarget(screen);
@@ -242,8 +243,9 @@ class Engine {
       );
 
       const members = membersByGroup.get(screen.groupId) ?? [screen];
-      if (this.lyricsFrame) {
-        this.lyrics.sync(screen.groupId, members, this.lyricsFrame, target.height);
+      if (this.lyricsFrame && !lyricsSynced.has(screen.groupId)) {
+        this.lyrics.sync(screen.groupId, members, this.lyricsFrame, this.programHeight);
+        lyricsSynced.add(screen.groupId);
       }
 
       this.drawScreen(

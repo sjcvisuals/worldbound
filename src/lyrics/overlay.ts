@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { FullScreenQuad } from "three/examples/jsm/postprocessing/Pass.js";
 import type { LyricLine, LyricsMapMode, Screen } from "../types";
 import { layoutSpan, sliceFor, type SpanLayout } from "./layout";
+import { packWordsInBands, wipeX, type PackBand, type PackedWord } from "./pack";
 import { activeLyric, karaokeProgress } from "./parse";
 
 const VERT = /* glsl */ `
@@ -80,6 +81,11 @@ export class LyricsOverlay {
         blending: THREE.NormalBlending,
       })
     );
+    if (typeof document !== "undefined" && document.fonts?.ready) {
+      document.fonts.ready.then(() => {
+        this.lastKey = "";
+      });
+    }
   }
 
   sync(groupId: string, members: Screen[], frame: LyricsFrame, atlasHeight: number) {
@@ -117,7 +123,14 @@ export class LyricsOverlay {
     this.ensure(w, h);
     const key = `${current.text}|${next?.text ?? ""}|${wipe.toFixed(3)}|${w}x${h}|${frame.mode}|${frame.fill}|${frame.showNext}`;
     if (key !== this.lastKey) {
-      this.paint(current.text, frame.showNext ? next?.text ?? "" : "", wipe, frame.fill, frame.beat);
+      this.paint(
+        current.text,
+        frame.showNext ? next?.text ?? "" : "",
+        wipe,
+        frame.fill,
+        frame.beat,
+        frame.mode
+      );
       this.texture.needsUpdate = true;
       this.lastKey = key;
     }
@@ -168,7 +181,14 @@ export class LyricsOverlay {
     this.texture.needsUpdate = true;
   }
 
-  private paint(current: string, next: string, wipe: number, fill: string, beat: number) {
+  private paint(
+    current: string,
+    next: string,
+    wipe: number,
+    fill: string,
+    beat: number,
+    mode: LyricsMapMode
+  ) {
     const ctx = this.ctx;
     const w = this.canvas.width;
     const h = this.canvas.height;
@@ -184,26 +204,29 @@ export class LyricsOverlay {
     ctx.fillStyle = g;
     ctx.fillRect(0, barY, w, barH);
 
+    const bands = bandsFor(mode, this.layout, w);
     const words = current.toUpperCase().split(/\s+/).filter(Boolean);
-    const seams = (this.layout?.slices ?? []).slice(1).map((s) => s.x * w);
-    let size = Math.min(h * 0.3, w * 0.1);
+    const minBand = Math.min(...bands.map((b) => b.x1 - b.x0), w);
+    let size = Math.min(h * 0.34, minBand * 0.28);
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    let packed: { word: string; x: number; width: number }[] = [];
-    while (size > 16) {
-      ctx.font = `800 ${size}px ${FONT}`;
-      packed = packWords(words, w, seams, ctx);
-      const last = packed[packed.length - 1];
-      if (!last || last.x + last.width <= w - w * 0.02) break;
+    let packed: PackedWord[] = [];
+    while (size > 14) {
+      ctx.font = `400 ${size}px ${FONT}`;
+      const space = ctx.measureText(" ").width;
+      const widths = words.map((word) => ctx.measureText(word).width);
+      const result = packWordsInBands(words, widths, space, bands);
+      packed = result.packed;
+      if (!result.overflow) break;
       size -= 2;
     }
-    ctx.font = `800 ${size}px ${FONT}`;
+    ctx.font = `400 ${size}px ${FONT}`;
     const cy = h * 0.46;
-    const punch = 1 + beat * 0.03;
+    const punch = 1 + beat * 0.02;
     ctx.save();
-    ctx.translate(w / 2, cy);
-    ctx.scale(punch, punch);
-    ctx.translate(-w / 2, -cy);
+    ctx.translate(0, cy);
+    ctx.scale(1, punch);
+    ctx.translate(0, -cy);
 
     ctx.lineJoin = "round";
     ctx.miterLimit = 2;
@@ -218,14 +241,14 @@ export class LyricsOverlay {
       ctx.fillText(p.word, p.x, cy);
     }
     ctx.shadowBlur = 0;
-    const wipeX = w * wipe;
+    const cut = wipeX(packed, wipe, w);
     for (const p of packed) {
       const x0 = p.x;
       const x1 = p.x + p.width;
-      if (wipeX <= x0) continue;
+      if (cut <= x0) continue;
       ctx.save();
       ctx.beginPath();
-      ctx.rect(x0, 0, Math.min(x1, wipeX) - x0, h);
+      ctx.rect(x0, 0, Math.min(x1, cut) - x0, h);
       ctx.clip();
       ctx.fillStyle = "#ffffff";
       ctx.fillText(p.word, p.x, cy);
@@ -234,40 +257,34 @@ export class LyricsOverlay {
     ctx.restore();
 
     if (next) {
-      ctx.textAlign = "center";
-      ctx.font = `700 ${Math.max(12, size * 0.28)}px ${FONT}`;
-      ctx.lineWidth = 3;
+      const nextWords = next.toUpperCase().split(/\s+/).filter(Boolean);
+      let nSize = Math.max(12, size * 0.32);
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      let nextPacked: PackedWord[] = [];
+      while (nSize > 10) {
+        ctx.font = `400 ${nSize}px ${FONT}`;
+        const space = ctx.measureText(" ").width;
+        const widths = nextWords.map((word) => ctx.measureText(word).width);
+        const result = packWordsInBands(nextWords, widths, space, bands);
+        nextPacked = result.packed;
+        if (!result.overflow) break;
+        nSize -= 1;
+      }
+      ctx.font = `400 ${nSize}px ${FONT}`;
+      ctx.lineWidth = Math.max(2, nSize * 0.12);
       ctx.strokeStyle = "rgba(0,0,0,0.55)";
-      ctx.fillStyle = "rgba(180,220,255,0.5)";
-      const n = next.toUpperCase();
-      ctx.strokeText(n, w / 2, h * 0.74);
-      ctx.fillText(n, w / 2, h * 0.74);
+      ctx.fillStyle = "rgba(180,220,255,0.55)";
+      const ny = h * 0.72;
+      for (const p of nextPacked) {
+        ctx.strokeText(p.word, p.x, ny);
+        ctx.fillText(p.word, p.x, ny);
+      }
     }
   }
 }
 
-function packWords(
-  words: string[],
-  atlasW: number,
-  seamXs: number[],
-  ctx: CanvasRenderingContext2D
-): { word: string; x: number; width: number }[] {
-  const space = ctx.measureText(" ").width;
-  const widths = words.map((word) => ctx.measureText(word).width);
-  const total = widths.reduce((n, x) => n + x, 0) + space * Math.max(0, words.length - 1);
-  const pad = Math.max(6, atlasW * 0.01);
-  const seams = seamXs.filter((x) => x > pad && x < atlasW - pad);
-  let x = Math.max(pad, (atlasW - total) / 2);
-  const out: { word: string; x: number; width: number }[] = [];
-  for (let i = 0; i < words.length; i++) {
-    const width = widths[i];
-    for (const seam of seams) {
-      if (x < seam && x + width > seam) {
-        x = seam + pad;
-      }
-    }
-    out.push({ word: words[i], x, width });
-    x += width + space;
-  }
-  return out;
+function bandsFor(mode: LyricsMapMode, layout: SpanLayout | null, atlasW: number): PackBand[] {
+  if (mode === "each" || !layout?.slices.length) return [{ x0: 0, x1: atlasW }];
+  return layout.slices.map((s) => ({ x0: s.x * atlasW, x1: (s.x + s.w) * atlasW }));
 }
