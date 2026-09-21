@@ -261,7 +261,7 @@ class Engine {
       gl.clear();
       gl.render(this.world.scene, this.offAxisCam);
     }
-    const bloom = this.look === "cinema" ? 1.15 : 0.55;
+    const bloom = this.look === "cinema" ? 0.95 : 0.55;
     const grain = this.look === "cinema" ? 0.038 : 0.03;
     this.post.apply(gl, dst, {
       bloom,

@@ -137,7 +137,7 @@ export class PostStack {
   constructor() {
     this.brightQ = new FullScreenQuad(
       new THREE.ShaderMaterial({
-        uniforms: { tMap: this.uBrightMap, uThresh: { value: 0.32 } },
+        uniforms: { tMap: this.uBrightMap, uThresh: { value: 0.38 } },
         vertexShader: VERT,
         fragmentShader: BRIGHT_FRAG,
         depthTest: false,

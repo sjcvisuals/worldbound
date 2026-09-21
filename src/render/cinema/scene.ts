@@ -65,7 +65,7 @@ function farFrag(): string {
 
       vec3 col = mix(uColBottom, uColMid, smoothstep(0.02, 0.48, h));
       col = mix(col, uColTop, smoothstep(0.42, 1.0, h));
-      col *= 0.22 + 1.05 * n * (0.45 + uEnergy * 0.85);
+      col *= 0.32 + 0.95 * n * (0.5 + uEnergy * 0.75);
 
       // Ridged energy veins (lightning in the cloud).
       float vein = pow(ridge(uv * vec2(3.4, 5.0) + vec2(ph * cy, 0.0)), 4.5);
@@ -78,8 +78,8 @@ function farFrag(): string {
       col += fireCol * fire * (1.6 + uBeat * 1.8 + uEnergy);
 
       // Heaven wash + stars
-      float heaven = pow(h, 1.85) * (0.35 + 0.7 * uIntensity);
-      col += uColTop * heaven * (0.55 + 0.5 * n2);
+      float heaven = pow(h, 1.85) * (0.28 + 0.5 * uIntensity);
+      col += uColTop * heaven * (0.4 + 0.4 * n2);
       float stars = pow(hash21(floor(uv * 220.0 + vec2(uTime * 0.0, 3.1))), 28.0);
       col += uColTop * stars * smoothstep(0.4, 1.0, h) * 1.8;
 
@@ -97,7 +97,7 @@ function farFrag(): string {
       float band = exp(-pow((h - 0.28) * 6.0, 2.0));
       col += uColMid * band * (0.18 + 0.22 * uEnergy);
 
-      col *= 0.75 + 1.05 * uIntensity;
+      col *= 0.7 + 0.85 * uIntensity;
       gl_FragColor = vec4(col, 1.0);
     }
   `;
@@ -159,7 +159,7 @@ function angelFrag(): string {
           float flap = 1.0 + 0.10 * sin(ph * 25.13 * cy + rnd * 8.0);
           vec2 p = (vUv - 0.5 - cell);
           p.x /= flap;
-          float sc = 11.0 + rnd * 10.0;
+          float sc = 8.2 + rnd * 7.5;
           float ad = sdAngel(p * sc);
           ad += 0.035 * (fbm(p * 9.0 + rnd) - 0.5);
           d = min(d, ad);
@@ -182,10 +182,10 @@ function angelFrag(): string {
       vec3 holy = mix(uColMid, uColTop, 0.7);
       vec3 hell = mix(uColBottom, uColMid, 0.3);
       vec3 col = mix(hell, holy, smoothstep(0.1, 0.78, life));
-      col = mix(col, vec3(1.0), core * 0.55);
-      float punch = 1.0 + uBeat * uBeatPunch * 2.0;
-      float a = (fill * 0.9 + glow * 0.65 + core * 1.05 + haloAcc + trail) * punch;
-      a *= 0.55 + 0.75 * uIntensity + 0.4 * uEnergy;
+      col = mix(col, vec3(1.0), core * 0.22);
+      float punch = 1.0 + uBeat * uBeatPunch * 1.6;
+      float a = (fill * 0.82 + glow * 0.48 + core * 0.65 + haloAcc * 0.75 + trail * 0.65) * punch;
+      a *= 0.5 + 0.65 * uIntensity + 0.35 * uEnergy;
       if (a < 0.02) discard;
       gl_FragColor = vec4(col * a, clamp(a, 0.0, 1.0));
     }
@@ -273,8 +273,8 @@ function emberFrag(): string {
         float cycles = cy;
         vec2 p = vec2(fract(rnd.x + 0.02 * sin(ph * 6.2831)), fract(rnd.y - ph * cycles * 0.5));
         float r = length((uv - p) * vec2(1.2, 1.0));
-        float orb = exp(-pow(r * (9.0 + 8.0 * rnd.y), 2.0));
-        orb *= 0.35 + 0.5 * uDensity;
+        float orb = exp(-pow(r * (12.0 + 10.0 * rnd.y), 2.0));
+        orb *= 0.22 + 0.35 * uDensity;
         acc += orb;
         col += mix(uColMid, uColTop, rnd.x) * orb * 0.9;
       }
@@ -348,9 +348,9 @@ export class CinemaWorld {
     this.uniforms.uColTop.value.copy(pick(2, "#d8fbff"));
     this.uniforms.uColMid.value.copy(pick(0, "#00b3ff"));
     this.uniforms.uColBottom.value.copy(pick(pal.length - 1, "#ff2d55"));
-    this.uniforms.uIntensity.value = Math.min(1.2, v.intensity * 1.15);
+    this.uniforms.uIntensity.value = Math.min(1.1, v.intensity * 1.08);
     this.uniforms.uSpeed.value = v.speed;
-    this.uniforms.uDensity.value = Math.min(1, v.density * 1.15);
+    this.uniforms.uDensity.value = Math.min(1, v.density * 1.1);
     this.uniforms.uBeatPunch.value = v.beatPunch;
     this.uniforms.uSeed.value = v.seed;
   }
