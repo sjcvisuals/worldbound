@@ -5,6 +5,10 @@
     {
       "name": "dev-server",
       "command": "npm run dev"
+    },
+    {
+      "name": "encode-server",
+      "command": "npm run encode-server"
     }
   ]
 }

@@ -106,7 +106,8 @@ button {
   align-items: center;
   pointer-events: none;
 }
-.stage-overlay .chip {
+.stage-overlay .chip,
+.stage-overlay .toggle {
   pointer-events: auto;
 }
 
@@ -426,4 +427,33 @@ input[type="range"] {
   background: var(--accent);
   color: #001;
   font-weight: 600;
+}
+
+.progress-bar {
+  margin-top: 6px;
+  height: 6px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+.clip-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+.clip-row a {
+  color: var(--accent-2);
+  text-decoration: none;
+  word-break: break-all;
+}
+.clip-row a:hover {
+  text-decoration: underline;
 }

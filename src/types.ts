@@ -137,6 +137,32 @@ export interface LoopVisual {
   motif: string;
 }
 
+export type GizmoMode = "translate" | "rotate" | "scale" | "eye";
+
+export type ExportQuality = "preview" | "delivery" | "full";
+export type ExportScope = "quick" | "current" | "all";
+
+export interface ExportProgress {
+  active: boolean;
+  label: string;
+  current: number;
+  total: number;
+  error: string | null;
+}
+
+export interface ExportedClip {
+  id: string;
+  screenId: string;
+  screenName: string;
+  loopId: string;
+  filename: string;
+  url: string;
+  size: number;
+  width: number;
+  height: number;
+  duration: number;
+}
+
 export interface ProjectState {
   groups: ScreenGroup[];
   screens: Screen[];

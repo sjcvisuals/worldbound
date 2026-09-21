@@ -1,11 +1,12 @@
-import { useMemo, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
+import type { MutableRefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Grid, Line, OrbitControls, TransformControls } from "@react-three/drei";
 import * as THREE from "three";
 import { useStore } from "../state/store";
 import { engine } from "../render/engine";
 import { screenCorners } from "../render/geometry";
-import type { Screen } from "../types";
+import type { GizmoMode, Screen, Vec3 } from "../types";
 
 function sampleEnergy(playhead: number): number {
   const { audio } = useStore.getState();
@@ -22,12 +23,14 @@ function RenderDriver() {
 
   useFrame((_, dt) => {
     const st = useStore.getState();
+    if (st.exportProgress.active) return;
     const { screens, groups, viewpoint, loops, playhead, generation } = st;
 
-    // Active loop → visual params (fallback to generation defaults pre-generate).
     const active = loops.find((l) => playhead >= l.startSec && playhead < l.endSec);
-    if (active) engine.world.applyLoopVisual(active.visual);
-    else
+    if (active) {
+      engine.world.applyLoopVisual(active.visual);
+      engine.world.setTime(playhead - active.startSec, active.lengthSec);
+    } else {
       engine.world.applyLoopVisual({
         seed: 0,
         palette: generation.palette,
@@ -37,12 +40,13 @@ function RenderDriver() {
         beatPunch: 0.5,
         motif: generation.motif,
       });
+      engine.world.setTime(playhead, 0);
+    }
 
-    // Beat detection: pulse when playhead crosses a beat time.
     let beat = 0;
     const a = st.audio?.analysis;
     if (a && st.playing) {
-      if (playhead < lastPlay.current) beatIdx.current = 0; // looped/seek back
+      if (playhead < lastPlay.current) beatIdx.current = 0;
       while (beatIdx.current < a.beats.length && a.beats[beatIdx.current] <= playhead) {
         beat = 1;
         beatIdx.current++;
@@ -50,19 +54,29 @@ function RenderDriver() {
     }
     lastPlay.current = playhead;
 
-    const energy = sampleEnergy(playhead);
-    engine.world.update(Math.min(dt, 0.05), energy, beat);
+    engine.world.pulse(Math.min(dt, 0.05), sampleEnergy(playhead), beat);
     engine.renderScreens(gl, screens, groups, viewpoint);
   }, 0);
 
   return null;
 }
 
+function rad(d: number) {
+  return THREE.MathUtils.degToRad(d);
+}
+function deg(r: number) {
+  return THREE.MathUtils.radToDeg(r);
+}
+
 function ScreenMesh({ screen }: { screen: Screen }) {
   const selectScreen = useStore((s) => s.selectScreen);
   const selected = useStore((s) => s.selectedScreenId === screen.id);
+  const gizmoMode = useStore((s) => s.gizmoMode);
+  const updateScreen = useStore((s) => s.updateScreen);
   const group = useStore((s) => s.groups.find((g) => g.id === screen.groupId));
   const texture = engine.getTarget(screen).texture;
+  const groupRef = useRef<THREE.Group>(null);
+  const controls = useThree((s) => s.controls) as unknown as { enabled: boolean } | null;
 
   const corners = useMemo(() => screenCorners(screen), [screen]);
   const linePoints = useMemo(
@@ -70,34 +84,58 @@ function ScreenMesh({ screen }: { screen: Screen }) {
     [corners]
   );
 
-  const quat = useMemo(
-    () =>
-      new THREE.Euler(
-        THREE.MathUtils.degToRad(screen.rotation[0]),
-        THREE.MathUtils.degToRad(screen.rotation[1]),
-        THREE.MathUtils.degToRad(screen.rotation[2])
-      ),
+  const euler = useMemo(
+    () => new THREE.Euler(rad(screen.rotation[0]), rad(screen.rotation[1]), rad(screen.rotation[2])),
     [screen.rotation]
   );
 
+  const showGizmo = selected && gizmoMode !== "eye";
+
   return (
     <group>
-      <mesh
+      <group
+        ref={groupRef}
         position={screen.position}
-        rotation={quat}
-        onClick={(e) => {
-          e.stopPropagation();
-          selectScreen(screen.id);
-        }}
+        rotation={euler}
+        scale={[screen.size.width, screen.size.height, 1]}
       >
-        <planeGeometry args={[screen.size.width, screen.size.height]} />
-        <meshBasicMaterial map={texture} toneMapped={false} side={THREE.DoubleSide} />
-      </mesh>
+        <mesh
+          onClick={(e) => {
+            e.stopPropagation();
+            selectScreen(screen.id);
+          }}
+        >
+          <planeGeometry args={[1, 1]} />
+          <meshBasicMaterial map={texture} toneMapped={false} side={THREE.DoubleSide} />
+        </mesh>
+      </group>
       <Line
         points={linePoints}
         color={selected ? "#ffffff" : group?.color ?? "#38bdf8"}
         lineWidth={selected ? 2.5 : 1.2}
       />
+      {showGizmo && (
+        <TransformControls
+          object={groupRef as unknown as MutableRefObject<THREE.Object3D>}
+          mode={gizmoMode}
+          onMouseDown={() => controls && (controls.enabled = false)}
+          onMouseUp={() => {
+            if (controls) controls.enabled = true;
+          }}
+          onObjectChange={() => {
+            const g = groupRef.current;
+            if (!g) return;
+            updateScreen(screen.id, {
+              position: [g.position.x, g.position.y, g.position.z],
+              rotation: [deg(g.rotation.x), deg(g.rotation.y), deg(g.rotation.z)],
+              size: {
+                width: Math.max(0.2, Math.abs(g.scale.x)),
+                height: Math.max(0.2, Math.abs(g.scale.y)),
+              },
+            });
+          }}
+        />
+      )}
     </group>
   );
 }
@@ -119,7 +157,7 @@ function Frustums() {
               [eye[0], eye[1], eye[2]],
               [c.x, c.y, c.z],
             ]}
-            color="#7df9ff"
+            color={viewpoint.overrides[s.id] ? "#f472b6" : "#7df9ff"}
             transparent
             opacity={0.28}
             lineWidth={1}
@@ -130,27 +168,102 @@ function Frustums() {
   );
 }
 
-function ViewpointGizmo() {
-  const viewpoint = useStore((s) => s.viewpoint);
-  const setViewpoint = useStore((s) => s.setViewpoint);
+function EyeGizmo({
+  position,
+  color,
+  active,
+  onChange,
+}: {
+  position: Vec3;
+  color: string;
+  active: boolean;
+  onChange: (p: Vec3) => void;
+}) {
   const ref = useRef<THREE.Mesh>(null);
   const controls = useThree((s) => s.controls) as unknown as { enabled: boolean } | null;
 
+  useLayoutEffect(() => {
+    if (!ref.current) return;
+    ref.current.position.set(position[0], position[1], position[2]);
+  }, [position]);
+
+  const sphere = (
+    <mesh ref={ref} position={position}>
+      <sphereGeometry args={[0.38, 20, 20]} />
+      <meshBasicMaterial color={color} />
+    </mesh>
+  );
+
+  if (!active) return sphere;
   return (
     <TransformControls
       mode="translate"
       onMouseDown={() => controls && (controls.enabled = false)}
       onMouseUp={() => controls && (controls.enabled = true)}
       onObjectChange={() => {
-        if (ref.current)
-          setViewpoint([ref.current.position.x, ref.current.position.y, ref.current.position.z]);
+        if (ref.current) onChange([ref.current.position.x, ref.current.position.y, ref.current.position.z]);
       }}
     >
-      <mesh ref={ref} position={viewpoint.position}>
-        <sphereGeometry args={[0.4, 20, 20]} />
-        <meshBasicMaterial color="#ff2d55" />
-      </mesh>
+      {sphere}
     </TransformControls>
+  );
+}
+
+function ViewpointGizmos() {
+  const viewpoint = useStore((s) => s.viewpoint);
+  const setViewpoint = useStore((s) => s.setViewpoint);
+  const setOverride = useStore((s) => s.setViewpointOverride);
+  const gizmoMode = useStore((s) => s.gizmoMode);
+  const selectedId = useStore((s) => s.selectedScreenId);
+  const screens = useStore((s) => s.screens);
+  const selectedHasOverride = !!(selectedId && viewpoint.overrides[selectedId]);
+
+  return (
+    <>
+      <EyeGizmo
+        position={viewpoint.position}
+        color="#ff2d55"
+        active={gizmoMode === "eye" && !selectedHasOverride}
+        onChange={setViewpoint}
+      />
+      {screens.map((s) => {
+        const ov = viewpoint.overrides[s.id];
+        if (!ov) return null;
+        return (
+          <EyeGizmo
+            key={s.id}
+            position={ov}
+            color="#f472b6"
+            active={gizmoMode === "eye" && selectedId === s.id}
+            onChange={(p) => setOverride(s.id, p)}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+const MODE_LABEL: Record<GizmoMode, string> = {
+  translate: "Move screens (W)",
+  rotate: "Rotate screens (E)",
+  scale: "Scale screens (R)",
+  eye: "Perspective eye (V)",
+};
+
+export function StageToolbar() {
+  const mode = useStore((s) => s.gizmoMode);
+  const set = useStore((s) => s.setGizmoMode);
+  return (
+    <div className="stage-overlay">
+      <div className="toggle">
+        {(["translate", "rotate", "scale", "eye"] as GizmoMode[]).map((m) => (
+          <button key={m} className={mode === m ? "on" : ""} onClick={() => set(m)} title={MODE_LABEL[m]}>
+            {m === "translate" ? "Move" : m === "rotate" ? "Rotate" : m === "scale" ? "Scale" : "Eye"}
+          </button>
+        ))}
+      </div>
+      <span className="badge chip">{MODE_LABEL[mode]}</span>
+    </div>
   );
 }
 
@@ -178,7 +291,7 @@ export function StageView() {
         <ScreenMesh key={s.id} screen={s} />
       ))}
       <Frustums />
-      <ViewpointGizmo />
+      <ViewpointGizmos />
       <OrbitControls makeDefault target={[0, 2, 0]} maxPolarAngle={Math.PI * 0.52} />
     </Canvas>
   );

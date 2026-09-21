@@ -24,9 +24,12 @@ worldbound.ai
    bars so they wrap on the grid), roughly 20–30s each, one per section, each
    **progressing** through the classic start → build → chorus → big-finish arc.
 5. **Placed on the timeline.** Loops are laid out above the audio in the right
-   positions so you can run the show without chasing timecode.
-6. **Per-screen program feeds.** Every screen shows its final feed, **baked with
-   its own perspective**.
+   positions so you can run the show without chasing timecode. Visual motion
+   wraps on the loop length so clips are **seamless**.
+6. **Render usable graphics.** Each screen × loop is encoded as H.264 (in-browser
+   WebCodecs) at the locked resolution, baked with that screen's perspective.
+   Optional `npm run encode-server` transcodes to ProRes; NotchLC requests use
+   ProRes 4444 as the closest open master (NotchLC itself is proprietary).
 
 ### The key feature: baked 3D perspective for 2D content
 
@@ -36,7 +39,10 @@ that screen's quad — the same technique as CAVE/nDisplay. The result:
 
 - Content flows **seamlessly across screens** based on their real position in 3D
   space, exactly as if you were looking through them into an Unreal world.
-- Move the perspective eye and every screen re-bakes live.
+- Move the perspective eye and every screen re-bakes live. Screens can share one
+  global eye or use an **independent** eye per screen.
+- **Unreal-style gizmos.** `W` move / `E` rotate / `R` scale selected screens;
+  `V` moves the perspective eye.
 - **Grouping controls mapping.** A `3D` group treats its screens as windows into
   the shared world. A `flat` group maps a single 2D image across all member
   screens as one contiguous surface. So even flat 2D content spans multiple
@@ -45,10 +51,25 @@ that screen's quad — the same technique as CAVE/nDisplay. The result:
 ## Output settings
 
 Resolution (default **locked to each screen**, or a custom override), frame rate
-(default **25**), colour profile (default **rec709**), codec (default
-**NotchLC**, with **ProRes 4444** and **H.264** for fast dev exports) and bit
-depth (**8** default, 10/12/16). "Export render manifest" writes the full
-per-screen × per-loop render plan as JSON.
+(default **25**), colour profile (default **rec709**), codec (default **NotchLC**,
+with **ProRes** and **H.264**), bit depth (**8** default, 10/12/16).
+
+**Render usable graphics** writes one clip per screen (zipped if more than one):
+
+| Quality | Cap |
+| --- | --- |
+| Preview | longest side 960 |
+| Delivery | longest side 1920 |
+| Full | native, up to 4K |
+
+| Scope | What gets rendered |
+| --- | --- |
+| Quick clip | 4 seconds of the loop under the playhead, all screens |
+| Current loop | that loop’s full length |
+| All loops | every loop × every screen |
+
+H.264 is always produced in-browser. If the encode sidecar is running, ProRes /
+NotchLC-stand-in transcode happens automatically.
 
 ## Generation models
 
@@ -71,12 +92,13 @@ those are listed and marked "backend required" until that service is connected.
 ```bash
 npm install
 npm run gen:demo-track   # synthesises public/demo-track.wav (structured 120 BPM)
+npm run encode-server    # optional: ffmpeg sidecar for ProRes (port 8787)
 npm run dev              # http://localhost:5173
 ```
 
-Then: **Load demo track** → **Generate content for full track** → **Play**. Drag
-the red marker in the stage to move the perspective eye, or toggle a group between
-`3D` and `Flat`.
+Then: **Load demo track** → **Generate content for full track** → **Play**.
+`W`/`E`/`R` to move/rotate/scale screens, `V` to move the perspective eye.
+**Render usable graphics** (quick / preview) downloads baked H.264 clips.
 
 ### Scripts
 
@@ -87,6 +109,7 @@ the red marker in the stage to move the perspective eye, or toggle a group betwe
 | `npm run preview` | Serve the production build |
 | `npm run typecheck` | `tsc` type-check only |
 | `npm run gen:demo-track` | Generate the demo audio track |
+| `npm run encode-server` | ffmpeg sidecar (ProRes / NotchLC-stand-in) on :8787 |
 
 ## Project layout
 
@@ -95,17 +118,20 @@ src/
   audio/analyze.ts        Web Audio BPM/beat/energy/section analysis
   generation/             model registry, prompt parsing, loop generator
   render/
-    world.ts              shared 3D content world (GLSL, audio-reactive)
+    world.ts              shared 3D content world (seamless looping GLSL)
     engine.ts             per-screen off-axis (3D) + ortho (flat) rendering
-    geometry.ts           screen-corner maths
-  components/             stage, timeline, panels, per-screen preview
+    exportPipeline.ts     offline baked-clip renderer
+    encodeMp4.ts          WebCodecs H.264 + mp4-muxer
+    zipStore.ts           zip writer for multi-clip download
+  components/             stage gizmos, timeline, panels, per-screen preview
   state/store.ts          zustand project state
 scripts/generate-demo-track.mjs
+scripts/encode-server.mjs
 ```
 
 ## Roadmap
 
-- GPU render backend for open-source diffusion video models
-- ProRes/NotchLC encoding pipeline (ffmpeg / AVEncoder) at 10–16 bit
-- Full-resolution offline render + Spout/NDI live output
-- Per-screen viewpoint UI and warp/blend for curved walls
+- GPU render backend for open-source diffusion video models (AnimateDiff / SVD / Deforum)
+- Native NotchLC encoder (currently ProRes 4444 stand-in)
+- Spout/NDI live output to media servers
+- Warp/blend for curved walls

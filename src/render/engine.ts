@@ -22,9 +22,11 @@ interface ScreenTarget {
 class Engine {
   readonly world = new ContentWorld();
   private targets = new Map<string, ScreenTarget>();
+  private exportTarget: ScreenTarget | null = null;
   private offAxisCam = new THREE.Camera();
   private orthoCam = new THREE.OrthographicCamera();
   private gl: THREE.WebGLRenderer | null = null;
+  private vpScratch = new THREE.Vector4();
 
   // scratch
   private pa = new THREE.Vector3();
@@ -48,6 +50,10 @@ class Engine {
 
   setRenderer(gl: THREE.WebGLRenderer) {
     this.gl = gl;
+  }
+
+  getRenderer(): THREE.WebGLRenderer | null {
+    return this.gl;
   }
 
   getTarget(screen: Screen): THREE.WebGLRenderTarget {
@@ -239,6 +245,69 @@ class Engine {
       img.data.set(buf.subarray(src, src + width * 4), dst);
     }
     ctx.putImageData(img, 0, 0);
+  }
+
+  private ensureExportTarget(width: number, height: number): THREE.WebGLRenderTarget {
+    if (!this.exportTarget || this.exportTarget.width !== width || this.exportTarget.height !== height) {
+      this.exportTarget?.target.dispose();
+      this.exportTarget = {
+        target: new THREE.WebGLRenderTarget(width, height, {
+          minFilter: THREE.LinearFilter,
+          magFilter: THREE.LinearFilter,
+          colorSpace: THREE.SRGBColorSpace,
+        }),
+        width,
+        height,
+      };
+    }
+    return this.exportTarget.target;
+  }
+
+  /**
+   * Render one screen at an explicit pixel size into `pixels` (RGBA, top-left origin).
+   * Used by the offline exporter. Reuses a dedicated render target.
+   */
+  renderExportFrame(
+    gl: THREE.WebGLRenderer,
+    screen: Screen,
+    screens: Screen[],
+    groups: ScreenGroup[],
+    viewpoint: Viewpoint,
+    width: number,
+    height: number,
+    pixels: Uint8ClampedArray
+  ) {
+    this.gl = gl;
+    const target = this.ensureExportTarget(width, height);
+    const groupMap = new Map(groups.map((g) => [g.id, g]));
+    const members = screens.filter((s) => s.groupId === screen.groupId);
+    const group = groupMap.get(screen.groupId);
+    const override = viewpoint.overrides[screen.id];
+    this.eye.set(...(override ?? viewpoint.position));
+
+    const prevTarget = gl.getRenderTarget();
+    gl.getViewport(this.vpScratch);
+    gl.setRenderTarget(target);
+    gl.setViewport(0, 0, width, height);
+
+    if (group && group.mode === "flat") {
+      this.setupFlat(screen, members.length ? members : [screen]);
+      gl.render(this.world.scene, this.orthoCam);
+    } else {
+      this.setupOffAxis(screen, this.eye);
+      gl.render(this.world.scene, this.offAxisCam);
+    }
+
+    const buf = new Uint8Array(width * height * 4);
+    gl.readRenderTargetPixels(target, 0, 0, width, height, buf);
+    gl.setViewport(this.vpScratch.x, this.vpScratch.y, this.vpScratch.z, this.vpScratch.w);
+    gl.setRenderTarget(prevTarget);
+
+    for (let y = 0; y < height; y++) {
+      const src = (height - 1 - y) * width * 4;
+      const dst = y * width * 4;
+      pixels.set(buf.subarray(src, src + width * 4), dst);
+    }
   }
 }
 

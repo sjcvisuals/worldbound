@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useStore } from "./state/store";
-import { StageView } from "./components/StageView";
+import { StageToolbar, StageView } from "./components/StageView";
 import { Topbar } from "./components/Topbar";
 import { SceneTree } from "./components/SceneTree";
 import { ScreenInspector } from "./components/ScreenInspector";
@@ -10,15 +10,38 @@ import { GenerationPanel } from "./components/GenerationPanel";
 import { OutputPanel } from "./components/OutputPanel";
 import { Timeline } from "./components/Timeline";
 import { PreviewPanel } from "./components/PreviewPanel";
+import type { GizmoMode } from "./types";
+
+const KEY_MODE: Record<string, GizmoMode> = {
+  w: "translate",
+  e: "rotate",
+  r: "scale",
+  v: "eye",
+};
 
 export function App() {
   const audioUrl = useStore((s) => s.audio?.url);
   const playing = useStore((s) => s.playing);
   const setPlayhead = useStore((s) => s.setPlayhead);
   const setPlaying = useStore((s) => s.setPlaying);
+  const setGizmoMode = useStore((s) => s.setGizmoMode);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   if (!audioRef.current) audioRef.current = new Audio();
+
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      const t = ev.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT")) return;
+      const mode = KEY_MODE[ev.key.toLowerCase()];
+      if (mode) {
+        ev.preventDefault();
+        setGizmoMode(mode);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [setGizmoMode]);
 
   useEffect(() => {
     const el = audioRef.current!;
@@ -75,9 +98,7 @@ export function App() {
         <ViewpointPanel />
       </div>
       <div className="stage">
-        <div className="stage-overlay">
-          <span className="badge chip">Drag red marker = move perspective eye · Orbit to inspect</span>
-        </div>
+        <StageToolbar />
         <StageView />
       </div>
       <div className="sidebar right">

@@ -2,7 +2,10 @@ import { create } from "zustand";
 import type {
   AudioAnalysis,
   ContentLoop,
+  ExportedClip,
+  ExportProgress,
   GenerationParams,
+  GizmoMode,
   OutputSettings,
   ProjectState,
   Screen,
@@ -66,7 +69,7 @@ const defaultOutput: OutputSettings = {
   custom: { width: 3840, height: 2160 },
   fps: 25,
   colorProfile: "rec709",
-  codec: "notchlc",
+  codec: "h264",
   bitDepth: 8,
 };
 
@@ -86,12 +89,16 @@ export interface Store extends ProjectState {
   playing: boolean;
   isGenerating: boolean;
   showFrustums: boolean;
+  gizmoMode: GizmoMode;
+  exportProgress: ExportProgress;
+  exportedClips: ExportedClip[];
 
   // selection / playback
   selectScreen: (id: string | null) => void;
   setPlayhead: (t: number) => void;
   setPlaying: (p: boolean) => void;
   toggleFrustums: () => void;
+  setGizmoMode: (m: GizmoMode) => void;
 
   // screens & groups
   addScreen: () => void;
@@ -103,6 +110,7 @@ export interface Store extends ProjectState {
 
   // viewpoint
   setViewpoint: (position: Vec3) => void;
+  setViewpointOverride: (screenId: string, position: Vec3 | null) => void;
 
   // output
   updateOutput: (patch: Partial<OutputSettings>) => void;
@@ -115,6 +123,11 @@ export interface Store extends ProjectState {
   updateGeneration: (patch: Partial<GenerationParams>) => void;
   setGenerating: (g: boolean) => void;
   setLoops: (loops: ContentLoop[]) => void;
+
+  // export
+  setExportProgress: (p: Partial<ExportProgress>) => void;
+  addExportedClips: (clips: ExportedClip[]) => void;
+  clearExportedClips: () => void;
 }
 
 const groupPalette = ["#38bdf8", "#f472b6", "#a3e635", "#fbbf24", "#c084fc"];
@@ -133,11 +146,15 @@ export const useStore = create<Store>((set) => ({
   playing: false,
   isGenerating: false,
   showFrustums: true,
+  gizmoMode: "eye",
+  exportProgress: { active: false, label: "", current: 0, total: 0, error: null },
+  exportedClips: [],
 
   selectScreen: (id) => set({ selectedScreenId: id }),
   setPlayhead: (t) => set({ playhead: t }),
   setPlaying: (p) => set({ playing: p }),
   toggleFrustums: () => set((s) => ({ showFrustums: !s.showFrustums })),
+  setGizmoMode: (gizmoMode) => set({ gizmoMode }),
 
   addScreen: () =>
     set((s) => {
@@ -200,6 +217,14 @@ export const useStore = create<Store>((set) => ({
   setViewpoint: (position) =>
     set((s) => ({ viewpoint: { ...s.viewpoint, position } })),
 
+  setViewpointOverride: (screenId, position) =>
+    set((s) => {
+      const overrides = { ...s.viewpoint.overrides };
+      if (position === null) delete overrides[screenId];
+      else overrides[screenId] = position;
+      return { viewpoint: { ...s.viewpoint, overrides } };
+    }),
+
   updateOutput: (patch) => set((s) => ({ output: { ...s.output, ...patch } })),
 
   setAudio: (name, url) =>
@@ -213,4 +238,14 @@ export const useStore = create<Store>((set) => ({
 
   setGenerating: (isGenerating) => set({ isGenerating }),
   setLoops: (loops) => set({ loops }),
+
+  setExportProgress: (p) =>
+    set((s) => ({ exportProgress: { ...s.exportProgress, ...p } })),
+  addExportedClips: (clips) =>
+    set((s) => ({ exportedClips: [...s.exportedClips, ...clips] })),
+  clearExportedClips: () =>
+    set((s) => {
+      for (const c of s.exportedClips) URL.revokeObjectURL(c.url);
+      return { exportedClips: [] };
+    }),
 }));
