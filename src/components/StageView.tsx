@@ -77,6 +77,18 @@ function ScreenMesh({ screen }: { screen: Screen }) {
   const group = useStore((s) => s.groups.find((g) => g.id === screen.groupId));
   const texture = engine.getTarget(screen).texture;
   const groupRef = useRef<THREE.Group>(null);
+  const meshRef = useRef<THREE.Mesh>(null);
+
+  useFrame(() => {
+    const mesh = meshRef.current;
+    if (!mesh) return;
+    const tex = engine.getTarget(screen).texture;
+    const mat = mesh.material as THREE.MeshBasicMaterial;
+    if (mat.map !== tex) {
+      mat.map = tex;
+      mat.needsUpdate = true;
+    }
+  });
   const controls = useThree((s) => s.controls) as unknown as { enabled: boolean } | null;
 
   const corners = useMemo(() => screenCorners(screen), [screen]);
@@ -101,6 +113,7 @@ function ScreenMesh({ screen }: { screen: Screen }) {
         scale={[screen.size.width, screen.size.height, 1]}
       >
         <mesh
+          ref={meshRef}
           onClick={(e) => {
             e.stopPropagation();
             selectScreen(screen.id);

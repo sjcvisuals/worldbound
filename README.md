@@ -93,6 +93,13 @@ H.264/ProRes. A GPU box is only needed if you want diffusion plates
 
 **Volumetric 3D** remains available for particle/volume worlds.
 
+**Live program outputs.** Each screen’s baked feed can **pop out** to a
+black capture window (or double-click fullscreen). Window-capture those in
+OBS / Resolume / vMix — that’s the web stand-in for NDI/Spout until a native
+sender exists. Opening a live window raises program resolution to 720p-tall.
+`F` fullscreen in the pop-out, `H` hides the label, **Space** plays/pauses
+the show.
+
 **Diffusion plates** (AnimateDiff, CogVideoX, SVD) are an optional GPU worker
 (`npm run gpu-worker` + ComfyUI on an NVIDIA box). See `workers/README.md`.
 The UI never requires a GPU.
@@ -116,9 +123,11 @@ npm run encode-server    # optional: ffmpeg sidecar for ProRes (port 8787)
 npm run dev              # http://localhost:5173
 ```
 
-Then: **Load demo track** → **Generate content for full track** → **Play**.
-`W`/`E`/`R` to move/rotate/scale screens, `V` to move the perspective eye.
-**Render usable graphics** (quick / preview) downloads baked H.264 clips.
+Then: **Load demo track** → **Generate content for full track** → **Play**
+(or **Space**). `W`/`E`/`R` to move/rotate/scale screens, `V` to move the
+perspective eye. **Live** / **Pop out all** on Program Output to feed
+OBS/Resolume. **Render usable graphics** (quick / preview) downloads baked
+H.264 clips.
 
 ### Scripts
 
@@ -143,6 +152,7 @@ src/
     world.ts              volumetric 3D world (optional look)
     engine.ts             nDisplay bake + post
     exportPipeline.ts     offline baked-clip renderer
+  live/                   program pop-out windows (web NDI stand-in)
   components/             stage gizmos, timeline, panels
 scripts/encode-server.mjs
 scripts/gpu-worker.mjs
@@ -151,7 +161,8 @@ workers/comfyui/plate_loop.json
 
 ## Roadmap
 
-- Wire gpu-worker POST /prompt fully against a live ComfyUI + CogVideoX box
+- Native NDI/Spout sender (pop-out window-capture is the current web path)
 - Native NotchLC encoder (currently ProRes 4444 stand-in)
-- Spout/NDI live output to media servers
+- Prompt-driven motif variants (cinema stack still themed, palette-aware)
+- Wire gpu-worker POST /prompt fully against a live ComfyUI + CogVideoX box
 - Warp/blend for curved walls

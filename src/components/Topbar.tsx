@@ -7,7 +7,7 @@ export function Topbar() {
       <div className="spacer" />
       <span className="badge">Perspective-baked · nDisplay-style</span>
       <span className="badge">Audio-reactive generation</span>
-      <span className="badge">Open-source models</span>
+      <span className="badge">Live program pop-outs</span>
     </div>
   );
 }

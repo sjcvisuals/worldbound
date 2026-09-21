@@ -4,7 +4,7 @@ import { ContentWorld } from "./world";
 import { CinemaWorld } from "./cinema/scene";
 import { PostStack } from "./cinema/post";
 
-const PREVIEW_HEIGHT = 384;
+const DEFAULT_PROGRAM_HEIGHT = 384;
 
 interface ScreenTarget {
   target: THREE.WebGLRenderTarget;
@@ -32,6 +32,8 @@ class Engine {
   private orthoCam = new THREE.OrthographicCamera();
   private gl: THREE.WebGLRenderer | null = null;
   private vpScratch = new THREE.Vector4();
+  /** Tall edge of program/preview RTs. Raised while live pop-outs are open. */
+  private programHeight = DEFAULT_PROGRAM_HEIGHT;
 
   // scratch
   private pa = new THREE.Vector3();
@@ -69,9 +71,17 @@ class Engine {
     return this.gl;
   }
 
+  setProgramHeight(height: number) {
+    const h = Math.max(64, Math.round(height));
+    if (h === this.programHeight) return;
+    this.programHeight = h;
+    for (const entry of this.targets.values()) entry.target.dispose();
+    this.targets.clear();
+  }
+
   getTarget(screen: Screen): THREE.WebGLRenderTarget {
     const aspect = screen.resolution.width / screen.resolution.height || 16 / 9;
-    const height = PREVIEW_HEIGHT;
+    const height = this.programHeight;
     const width = Math.max(2, Math.round(height * aspect));
     let entry = this.targets.get(screen.id);
     if (!entry || entry.width !== width || entry.height !== height) {

@@ -99,7 +99,7 @@ export function Timeline({
         {analysis && <span className="badge">{analysis.bpm} BPM</span>}
         <span className="badge">{loops.length} loops</span>
         <div style={{ flex: 1 }} />
-        <span className="hint">Click the timeline to scrub</span>
+        <span className="hint">Space play/pause · click the timeline to scrub</span>
       </div>
 
       <div className="tl-track" ref={trackRef} onClick={handleSeek}>

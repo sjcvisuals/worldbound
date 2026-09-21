@@ -38,6 +38,15 @@ export function App() {
         ev.preventDefault();
         setGizmoMode(mode);
       }
+      if (ev.code === "Space") {
+        ev.preventDefault();
+        const st = useStore.getState();
+        st.setPlaying(!st.playing);
+      }
+      if (ev.key === "Escape") {
+        const st = useStore.getState();
+        if (st.playing) st.setPlaying(false);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
