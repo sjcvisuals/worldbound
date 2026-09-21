@@ -15,6 +15,7 @@ import type {
   Viewpoint,
 } from "../types";
 import { parseLyrics } from "../lyrics/parse";
+import { hasCompletedSetup, wantsForcedSetup } from "../setup/storage";
 
 let idCounter = 1;
 export const uid = (prefix: string) => `${prefix}-${idCounter++}`;
@@ -104,6 +105,9 @@ export interface Store extends ProjectState {
   gizmoMode: GizmoMode;
   exportProgress: ExportProgress;
   exportedClips: ExportedClip[];
+  /** First-run wizard. Editor stays hidden until the user finishes or skips. */
+  setupOpen: boolean;
+  editorReady: boolean;
 
   // selection / playback
   selectScreen: (id: string | null) => void;
@@ -111,6 +115,10 @@ export interface Store extends ProjectState {
   setPlaying: (p: boolean) => void;
   toggleFrustums: () => void;
   setGizmoMode: (m: GizmoMode) => void;
+  openSetup: () => void;
+  closeSetup: () => void;
+  revealEditor: () => void;
+  applyStage: (screens: Screen[], eye: Vec3) => void;
 
   // screens & groups
   addScreen: () => void;
@@ -164,12 +172,29 @@ export const useStore = create<Store>((set) => ({
   gizmoMode: "eye",
   exportProgress: { active: false, label: "", current: 0, total: 0, error: null },
   exportedClips: [],
+  setupOpen: !hasCompletedSetup() || wantsForcedSetup(),
+  editorReady: hasCompletedSetup(),
 
   selectScreen: (id) => set({ selectedScreenId: id }),
   setPlayhead: (t) => set({ playhead: t }),
   setPlaying: (p) => set({ playing: p }),
   toggleFrustums: () => set((s) => ({ showFrustums: !s.showFrustums })),
   setGizmoMode: (gizmoMode) => set({ gizmoMode }),
+  openSetup: () => set({ setupOpen: true }),
+  closeSetup: () => set({ setupOpen: false }),
+  revealEditor: () => set({ editorReady: true, setupOpen: false }),
+  applyStage: (screens, eye) =>
+    set({
+      screens: screens.map((s) => ({
+        ...s,
+        resolution: { ...s.resolution },
+        size: { ...s.size },
+        position: [...s.position] as Vec3,
+        rotation: [...s.rotation] as Vec3,
+      })),
+      viewpoint: { position: [...eye] as Vec3, overrides: {} },
+      selectedScreenId: screens[0]?.id ?? null,
+    }),
 
   addScreen: () =>
     set((s) => {

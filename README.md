@@ -137,11 +137,14 @@ npm run encode-server    # optional: ffmpeg sidecar for ProRes (port 8787)
 npm run dev              # http://localhost:5173
 ```
 
-Then: **Load demo track** → **Generate content for full track** → **Play**
-(or **Space**). `W`/`E`/`R` to move/rotate/scale screens, `V` to move the
-perspective eye. **Live** / **Pop out all** on Program Output to feed
-OBS/Resolume. **Render usable graphics** (quick / preview) downloads baked
-H.264 clips.
+Then: the **setup wizard** walks you through stage hang, audio, lyrics, look
+and bake settings. **Generate & open stage** builds the 3D scene. After that,
+**Play** (or **Space**). `W`/`E`/`R` to move/rotate/scale screens, `V` to move
+the perspective eye. **Setup show** in the top bar reopens the wizard.
+**Live** / **Pop out all** on Program Output to feed OBS/Resolume.
+**Render usable graphics** (quick / preview) downloads baked H.264 clips.
+
+Add `?setup=1` to the URL to force the wizard.
 
 ### Scripts
 
@@ -167,8 +170,9 @@ src/
     engine.ts             nDisplay bake + post
     exportPipeline.ts     offline baked-clip renderer
   lyrics/                 timed LRC, span layout, overlay
+  setup/                  first-run wizard presets
   live/                   program pop-out windows (web NDI stand-in)
-  components/             stage gizmos, timeline, panels
+  components/             stage gizmos, timeline, panels, setup wizard
 scripts/encode-server.mjs
 scripts/gpu-worker.mjs
 workers/comfyui/plate_loop.json

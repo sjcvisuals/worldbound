@@ -1,15 +1,13 @@
 import { useState } from "react";
 import { useStore } from "../state/store";
 import { GENERATION_MODELS, getModel } from "../generation/models";
-import { parsePrompt } from "../generation/prompt";
-import { generateLoops } from "../generation/generate";
+import { generateFromStore } from "../generation/run";
 import { Slider } from "./ui";
 
 export function GenerationPanel() {
   const generation = useStore((s) => s.generation);
   const update = useStore((s) => s.updateGeneration);
   const audio = useStore((s) => s.audio);
-  const setLoops = useStore((s) => s.setLoops);
   const setGenerating = useStore((s) => s.setGenerating);
   const isGenerating = useStore((s) => s.isGenerating);
   const loops = useStore((s) => s.loops);
@@ -25,21 +23,12 @@ export function GenerationPanel() {
     }
     setGenerating(true);
     setStatus("Interpreting prompt…");
-    const parsed = parsePrompt(generation.prompt);
-    update({ palette: parsed.palette, motif: parsed.motif });
-    // Simulate staged generation for UX feedback (kept lightweight).
-    await new Promise((r) => setTimeout(r, 250));
+    await new Promise((r) => setTimeout(r, 180));
     setStatus("Mapping loops to song structure…");
-    const params = { ...generation, palette: parsed.palette, motif: parsed.motif };
-    const generated = generateLoops(audio.analysis, params);
-    await new Promise((r) => setTimeout(r, 250));
-    setLoops(generated);
+    const result = generateFromStore();
+    await new Promise((r) => setTimeout(r, 180));
     setGenerating(false);
-    setStatus(
-      `Generated ${generated.length} seamless loops · ${generated[0]?.bars ?? 0} bars each (${generated[0]?.lengthSec.toFixed(
-        1
-      )}s)`
-    );
+    setStatus(result.status);
   }
 
   return (
