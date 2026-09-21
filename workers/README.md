@@ -6,9 +6,10 @@ diffusion rather than cinema shaders — run on a GPU box.
 
 ## In-browser (default, no GPU)
 
-`Cinema 2.5D` plates already produce heavy live-event looks (nebula, angels,
-embers, bloom, anamorphic streak, grain) and bake them through nDisplay
-cameras. Use this unless you specifically need photoreal diffusion.
+`Cinema 2.5D` plates already produce heavy live-event looks (nebula, haze,
+figures, energy ribbons, embers, bloom, anamorphic streak, grain) and bake
+them through nDisplay cameras. Use this unless you specifically need
+photoreal diffusion.
 
 ## Diffusion plates (GPU)
 

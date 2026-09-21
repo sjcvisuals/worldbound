@@ -74,19 +74,22 @@ NotchLC-stand-in transcode happens automatically.
 ## High-end visuals (AE / Notch replacement)
 
 Live-event content is usually **2D and heavy**, not a 3D game world. Worldbound
-stays a **browser show tool**. The default look is **Cinema 2.5D**:
+stays a **browser show tool** (the media server still plays the baked clips).
+The default look is **Cinema 2.5D** — an After Effects / Notch-style comp:
 
-- A stack of full-bleed plates parked *behind* the LED walls (nebula / hell
-  mouth, descending angels, embers) — the same idea as an After Effects comp
-  with layers in Z.
-- Each physical screen is still an nDisplay camera, so the 2D plates **parallax
+- Five full-bleed plates parked *behind* the LED walls: nebula + hell mouth,
+  volumetric haze, descending light-figures, energy ribbons, embers/bokeh.
+  Layers sit in Z so nDisplay cameras see real parallax, like a media-server
+  plate world.
+- Each physical screen is still an nDisplay camera, so the 2D plates **flow
   across walls** when the group is in 3D mode. Flat groups composite as one 2D
   surface.
-- A grade on every feed: bloom, anamorphic streak, chromatic aberration, grain,
-  vignette.
+- A grade on every feed: wide bloom, anamorphic streak, chromatic aberration,
+  cyan/magenta split-tone, grain, vignette.
 
-That’s the in-browser path toward Notch/AE density, and it exports as real
-H.264/ProRes.
+That’s the in-browser path toward AE/Notch density, and it exports as real
+H.264/ProRes. A GPU box is only needed if you want diffusion plates
+(AnimateDiff / CogVideoX) instead of cinema shaders.
 
 **Volumetric 3D** remains available for particle/volume worlds.
 

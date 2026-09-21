@@ -4,7 +4,7 @@ import { ContentWorld } from "./world";
 import { CinemaWorld } from "./cinema/scene";
 import { PostStack } from "./cinema/post";
 
-const PREVIEW_HEIGHT = 320;
+const PREVIEW_HEIGHT = 384;
 
 interface ScreenTarget {
   target: THREE.WebGLRenderTarget;
@@ -261,8 +261,8 @@ class Engine {
       gl.clear();
       gl.render(this.world.scene, this.offAxisCam);
     }
-    const bloom = this.look === "cinema" ? 0.9 : 0.55;
-    const grain = this.look === "cinema" ? 0.05 : 0.03;
+    const bloom = this.look === "cinema" ? 1.15 : 0.55;
+    const grain = this.look === "cinema" ? 0.038 : 0.03;
     this.post.apply(gl, dst, {
       bloom,
       beat: this.world.uniforms.uBeat.value,

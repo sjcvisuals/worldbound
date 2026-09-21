@@ -93,9 +93,9 @@ export function GenerationPanel() {
         </div>
       </div>
       <div className="hint">
-        Live-event content is usually 2D and heavy. Cinema stacks plates in depth (nebula / angels /
-        embers) like an After Effects comp, then bakes them through your LED cameras so they still
-        parallax across screens.
+        Live-event content is usually 2D and heavy. Cinema is a 5-plate After Effects-style
+        stack (nebula, haze, figures, energy ribbons, embers) with bloom, anamorphic streak and
+        grain, then baked through your LED cameras so it still parallaxes across screens.
       </div>
 
       <div style={{ marginTop: 8 }}>

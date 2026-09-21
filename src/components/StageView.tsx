@@ -35,10 +35,10 @@ function RenderDriver() {
       engine.world.applyLoopVisual({
         seed: 0,
         palette: generation.palette,
-        intensity: 0.5,
+        intensity: 0.75,
         speed: 1,
-        density: 0.5,
-        beatPunch: 0.5,
+        density: 0.7,
+        beatPunch: 0.55,
         motif: generation.motif,
       });
       engine.world.setTime(playhead, 0);

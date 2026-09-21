@@ -14,7 +14,7 @@ export const GENERATION_MODELS: GenerationModel[] = [
     available: true,
     openSource: true,
     description:
-      "High-end 2.5D plates — nebula, descending angels, embers — stacked in depth like an After Effects comp, then baked through your screens with nDisplay cameras. Bloom, anamorphic streak, grain. The live-event default.",
+      "High-end 2.5D plates — nebula, haze, descending figures, energy ribbons, embers — stacked in depth like an After Effects / Notch comp, then baked through nDisplay cameras. Heavy bloom, anamorphic streak, split-tone, grain. The live-event default.",
   },
   {
     id: "volumetric",
