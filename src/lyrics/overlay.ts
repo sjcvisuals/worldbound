@@ -184,57 +184,94 @@ export class LyricsOverlay {
     ctx.fillStyle = g;
     ctx.fillRect(0, barY, w, barH);
 
-    const text = current.toUpperCase();
-    const pad = w * 0.035;
-    let size = Math.min(h * 0.32, w * 0.12);
-    ctx.textAlign = "center";
+    const words = current.toUpperCase().split(/\s+/).filter(Boolean);
+    const seams = (this.layout?.slices ?? []).slice(1).map((s) => s.x * w);
+    let size = Math.min(h * 0.3, w * 0.1);
+    ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    const spaced = ctx as CanvasRenderingContext2D & { letterSpacing?: string };
-    if (spaced.letterSpacing != null) spaced.letterSpacing = "0.04em";
-    while (size > 18) {
+    let packed: { word: string; x: number; width: number }[] = [];
+    while (size > 16) {
       ctx.font = `800 ${size}px ${FONT}`;
-      if (ctx.measureText(text).width <= w - pad * 2) break;
+      packed = packWords(words, w, seams, ctx);
+      const last = packed[packed.length - 1];
+      if (!last || last.x + last.width <= w - w * 0.02) break;
       size -= 2;
     }
-    const punch = 1 + beat * 0.04;
-    const cx = w / 2;
-    const cy = h * 0.47;
+    ctx.font = `800 ${size}px ${FONT}`;
+    const cy = h * 0.46;
+    const punch = 1 + beat * 0.03;
     ctx.save();
-    ctx.translate(cx, cy);
+    ctx.translate(w / 2, cy);
     ctx.scale(punch, punch);
-    ctx.translate(-cx, -cy);
+    ctx.translate(-w / 2, -cy);
 
     ctx.lineJoin = "round";
     ctx.miterLimit = 2;
     ctx.lineWidth = Math.max(6, size * 0.14);
     ctx.strokeStyle = "rgba(0,0,0,0.88)";
-    ctx.font = `800 ${size}px ${FONT}`;
-    ctx.strokeText(text, cx, cy);
-
     ctx.shadowColor = fill;
-    ctx.shadowBlur = size * 0.35;
-    ctx.fillStyle = "rgba(255,255,255,0.28)";
-    ctx.fillText(text, cx, cy);
+    for (const p of packed) {
+      ctx.shadowBlur = 0;
+      ctx.strokeText(p.word, p.x, cy);
+      ctx.shadowBlur = size * 0.3;
+      ctx.fillStyle = "rgba(255,255,255,0.28)";
+      ctx.fillText(p.word, p.x, cy);
+    }
     ctx.shadowBlur = 0;
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, 0, Math.max(1, w * wipe), h);
-    ctx.clip();
-    ctx.fillStyle = "#ffffff";
-    ctx.fillText(text, cx, cy);
-    ctx.restore();
-
+    const wipeX = w * wipe;
+    for (const p of packed) {
+      const x0 = p.x;
+      const x1 = p.x + p.width;
+      if (wipeX <= x0) continue;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x0, 0, Math.min(x1, wipeX) - x0, h);
+      ctx.clip();
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(p.word, p.x, cy);
+      ctx.restore();
+    }
     ctx.restore();
 
     if (next) {
-      ctx.font = `700 ${Math.max(14, size * 0.32)}px ${FONT}`;
-      ctx.fillStyle = "rgba(180,220,255,0.55)";
-      ctx.strokeStyle = "rgba(0,0,0,0.5)";
+      ctx.textAlign = "center";
+      ctx.font = `700 ${Math.max(12, size * 0.28)}px ${FONT}`;
       ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(0,0,0,0.55)";
+      ctx.fillStyle = "rgba(180,220,255,0.5)";
       const n = next.toUpperCase();
-      ctx.strokeText(n, cx, h * 0.72);
-      ctx.fillText(n, cx, h * 0.72);
+      ctx.strokeText(n, w / 2, h * 0.74);
+      ctx.fillText(n, w / 2, h * 0.74);
     }
   }
+}
+
+function packWords(
+  words: string[],
+  atlasW: number,
+  seamXs: number[],
+  ctx: CanvasRenderingContext2D
+): { word: string; x: number; width: number }[] {
+  const space = ctx.measureText(" ").width;
+  const pad = Math.max(8, atlasW * 0.012);
+  const edges = [0, ...seamXs.filter((x) => x > 1 && x < atlasW - 1), atlasW];
+  let slot = 0;
+  let x = edges[0] + pad;
+  const out: { word: string; x: number; width: number }[] = [];
+  for (const word of words) {
+    const width = ctx.measureText(word).width;
+    let limit = edges[slot + 1] - pad;
+    if (x + width > limit && slot < edges.length - 2) {
+      slot += 1;
+      x = edges[slot] + pad;
+      limit = edges[slot + 1] - pad;
+    }
+    if (width > limit - (edges[slot] + pad) && slot < edges.length - 2) {
+      slot += 1;
+      x = edges[slot] + pad;
+    }
+    out.push({ word, x, width });
+    x += width + space;
+  }
+  return out;
 }
