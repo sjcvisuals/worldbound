@@ -1,0 +1,8 @@
+node_modules
+dist
+dist-ssr
+*.local
+.DS_Store
+.vite
+# Generated demo asset (large, produced by scripts/generate-demo-track.mjs)
+public/demo-track.wav

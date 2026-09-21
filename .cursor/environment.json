@@ -1,0 +1,14 @@
+{
+  "name": "Worldbound",
+  "install": "npm ci && npm run gen:demo-track",
+  "terminals": [
+    {
+      "name": "dev-server",
+      "command": "npm run dev"
+    },
+    {
+      "name": "encode-server",
+      "command": "npm run encode-server"
+    }
+  ]
+}
