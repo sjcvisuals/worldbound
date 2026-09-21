@@ -253,24 +253,20 @@ function packWords(
   ctx: CanvasRenderingContext2D
 ): { word: string; x: number; width: number }[] {
   const space = ctx.measureText(" ").width;
-  const pad = Math.max(8, atlasW * 0.012);
-  const edges = [0, ...seamXs.filter((x) => x > 1 && x < atlasW - 1), atlasW];
-  let slot = 0;
-  let x = edges[0] + pad;
+  const widths = words.map((word) => ctx.measureText(word).width);
+  const total = widths.reduce((n, x) => n + x, 0) + space * Math.max(0, words.length - 1);
+  const pad = Math.max(6, atlasW * 0.01);
+  const seams = seamXs.filter((x) => x > pad && x < atlasW - pad);
+  let x = Math.max(pad, (atlasW - total) / 2);
   const out: { word: string; x: number; width: number }[] = [];
-  for (const word of words) {
-    const width = ctx.measureText(word).width;
-    let limit = edges[slot + 1] - pad;
-    if (x + width > limit && slot < edges.length - 2) {
-      slot += 1;
-      x = edges[slot] + pad;
-      limit = edges[slot + 1] - pad;
+  for (let i = 0; i < words.length; i++) {
+    const width = widths[i];
+    for (const seam of seams) {
+      if (x < seam && x + width > seam) {
+        x = seam + pad;
+      }
     }
-    if (width > limit - (edges[slot] + pad) && slot < edges.length - 2) {
-      slot += 1;
-      x = edges[slot] + pad;
-    }
-    out.push({ word, x, width });
+    out.push({ word: words[i], x, width });
     x += width + space;
   }
   return out;
