@@ -84,6 +84,8 @@ export interface AudioTrack {
 
 export type SongSectionType = "intro" | "build" | "chorus" | "breakdown" | "finish";
 
+export type VideoProvider = "comfy" | "veo" | "seedance";
+
 export interface GenerationModel {
   id: string;
   label: string;
@@ -92,9 +94,26 @@ export interface GenerationModel {
   available: boolean;
   description: string;
   openSource: boolean;
+  /** External plate generator. Cinema still bakes the result through nDisplay. */
+  provider?: VideoProvider;
 }
 
 export type VisualEngine = "cinema" | "volumetric";
+
+/** Weights 0..1 that turn cinema layers on so the look matches the prompt. */
+export interface LookRecipe {
+  palette: string[];
+  motif: string;
+  figures: number;
+  fire: number;
+  water: number;
+  grid: number;
+  lightning: number;
+  particles: number;
+  tunnel: number;
+  smoke: number;
+  stars: number;
+}
 
 export interface GenerationParams {
   prompt: string;
@@ -109,6 +128,7 @@ export interface GenerationParams {
   targetLoopCount: number;
   /** Free-text motif extracted from the prompt, shown back to the user. */
   motif: string;
+  look: LookRecipe;
 }
 
 /** A generated, seamless, beat-synced content loop placed on the timeline. */
@@ -139,6 +159,7 @@ export interface LoopVisual {
   beatPunch: number;
   /** Named visual motif preset. */
   motif: string;
+  look?: LookRecipe;
 }
 
 export type LyricsMapMode = "span" | "each" | "off";

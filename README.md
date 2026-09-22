@@ -18,8 +18,10 @@ worldbound.ai
 2. **Add the track.** Drop an audio file on the timeline. Worldbound analyses it
    for tempo, beats, an energy envelope and coarse song structure
    (intro / build / chorus / breakdown / finish).
-3. **Prompt it.** Describe the look ("electric blue, angels descending into
-   hell", etc.). Worldbound extracts a theme palette and motif.
+3. **Prompt it.** Describe the look ("gold fire", "cyan grid tunnel", "angels
+   descending into hell"). Worldbound extracts a palette **and a layer recipe**
+   so the plates match the words — fire is fire, a grid is a grid, figures only
+   appear if you ask for them.
 4. **Generate.** It produces beat-synced, **seamless** loops (whole numbers of
    bars so they wrap on the grid), roughly 20–30s each, one per section, each
    **progressing** through the classic start → build → chorus → big-finish arc.
@@ -71,19 +73,12 @@ with **ProRes** and **H.264**), bit depth (**8** default, 10/12/16).
 H.264 is always produced in-browser. If the encode sidecar is running, ProRes /
 NotchLC-stand-in transcode happens automatically.
 
-## Lyrics across screens
+## Lyrics (parked)
 
-LED lyrics should **not** live in the 3D plates — perspective warps letters
-between walls. Worldbound draws timed type onto a **spanning atlas** unfolded
-left→right by each screen's physical width, then crops that atlas onto every
-feed. The cinema look still parallaxes in 3D; the words read as one 2D surface.
-
-- Paste **LRC** (`[mm:ss.xx]line`) or plain text (auto-timed to the track)
-- **Span group** (default): one line across the array. Whole words are assigned
-  to walls by physical width so bezels fall *between* words, never through a glyph.
-- **Each screen**: the same full line on every wall
-- **Karaoke wipe** fills the current line in time with the audio
-- Demo track auto-loads demo lyrics
+Timed spanning lyrics still exist under `src/lyrics/` but they are **off by
+default** and hidden from the wizard and editor. Karaoke-style type is usually
+the wrong first-class content for this tool — matching the visual prompt is.
+The atlas/packing code is kept so it can come back as an optional overlay later.
 
 ## High-end visuals (AE / Notch replacement)
 
@@ -91,10 +86,10 @@ Live-event content is usually **2D and heavy**, not a 3D game world. Worldbound
 stays a **browser show tool** (the media server still plays the baked clips).
 The default look is **Cinema 2.5D** — an After Effects / Notch-style comp:
 
-- Five full-bleed plates parked *behind* the LED walls: nebula + hell mouth,
-  volumetric haze, descending light-figures, energy ribbons, embers/bokeh.
-  Layers sit in Z so nDisplay cameras see real parallax, like a media-server
-  plate world.
+- Five full-bleed plates parked *behind* the LED walls. A **look recipe**
+  parsed from the prompt turns layers on: nebula, fire, grid/tunnel, water,
+  lightning, descending figures, energy ribbons, smoke, embers/stars. Layers
+  sit in Z so nDisplay cameras see real parallax.
 - Each physical screen is still an nDisplay camera, so the 2D plates **flow
   across walls** when the group is in 3D mode. Flat groups composite as one 2D
   surface.
@@ -102,8 +97,7 @@ The default look is **Cinema 2.5D** — an After Effects / Notch-style comp:
   cyan/magenta split-tone, grain, vignette.
 
 That’s the in-browser path toward AE/Notch density, and it exports as real
-H.264/ProRes. A GPU box is only needed if you want diffusion plates
-(AnimateDiff / CogVideoX) instead of cinema shaders.
+H.264/ProRes. A real video model is optional (see below).
 
 **Volumetric 3D** remains available for particle/volume worlds.
 
@@ -114,11 +108,26 @@ sender exists. Opening a live window raises program resolution to 720p-tall.
 `F` fullscreen in the pop-out, `H` hides the label, **Space** plays/pauses
 the show.
 
-**Diffusion plates** (AnimateDiff, CogVideoX, SVD) are an optional GPU worker
-(`npm run gpu-worker` + ComfyUI on an NVIDIA box). See `workers/README.md`.
-The UI never requires a GPU.
+**Video plates (Veo / Seedance / ComfyUI).** Yes — Worldbound can link a proper
+video generation model. The GPU worker (`npm run gpu-worker`) holds the keys
+and returns a looping MP4. Worldbound maps that onto the cinema **far plate**
+and still bakes every LED camera through nDisplay.
+
+| Provider | Env on the worker | Notes |
+| --- | --- | --- |
+| Google Veo | `GEMINI_API_KEY` | Gemini `predictLongRunning` (default `veo-3.1-generate-preview`) |
+| ByteDance Seedance | `FAL_KEY` | fal.ai `bytedance/seedance-2.5/text-to-video` |
+| AnimateDiff / SVD / CogVideoX | `COMFY_URL` | local ComfyUI on an NVIDIA box |
+
+Keys never go in the frontend. Without them, cinema shaders already match the
+prompt. See `workers/README.md`.
 
 ## Generation models
+
+- **Cinema plates** — in-browser, prompt-accurate look recipe (default)
+- **Volumetric 3D** — in-browser particle/volume world
+- **Veo / Seedance** — optional generated far plate (API key on the worker)
+- **AnimateDiff / SVD / CogVideoX** — optional open-source ComfyUI plates
 
 ## Tech
 
@@ -137,11 +146,14 @@ npm run encode-server    # optional: ffmpeg sidecar for ProRes (port 8787)
 npm run dev              # http://localhost:5173
 ```
 
-Then: **Load demo track** → **Generate content for full track** → **Play**
-(or **Space**). `W`/`E`/`R` to move/rotate/scale screens, `V` to move the
-perspective eye. **Live** / **Pop out all** on Program Output to feed
-OBS/Resolume. **Render usable graphics** (quick / preview) downloads baked
-H.264 clips.
+Then: the **setup wizard** walks you through stage hang, audio, look
+and bake settings. **Generate & open stage** builds the 3D scene. After that,
+**Play** (or **Space**). `W`/`E`/`R` to move/rotate/scale screens, `V` to move
+the perspective eye. **Setup show** in the top bar reopens the wizard.
+**Live** / **Pop out all** on Program Output to feed OBS/Resolume.
+**Render usable graphics** (quick / preview) downloads baked H.264 clips.
+
+Add `?setup=1` to the URL to force the wizard.
 
 ### Scripts
 
@@ -153,7 +165,9 @@ H.264 clips.
 | `npm run typecheck` | `tsc` type-check only |
 | `npm run gen:demo-track` | Generate the demo audio track |
 | `npm run encode-server` | ffmpeg sidecar (ProRes / NotchLC-stand-in) on :8787 |
-| `npm run gpu-worker` | Optional ComfyUI front-end (diffusion plates) on :8788 |
+| `npm run gpu-worker` | Optional Veo / Seedance / ComfyUI plate worker on :8788 |
+| `npm run test:prompt` | Prompt → look-recipe invariants |
+| `npm run test:lyrics` | Parked spanning-lyrics packing tests |
 
 ## Project layout
 
@@ -166,9 +180,10 @@ src/
     world.ts              volumetric 3D world (optional look)
     engine.ts             nDisplay bake + post
     exportPipeline.ts     offline baked-clip renderer
-  lyrics/                 timed LRC, span layout, overlay
+  lyrics/                 parked: timed LRC, span layout, overlay
+  setup/                  first-run wizard presets
   live/                   program pop-out windows (web NDI stand-in)
-  components/             stage gizmos, timeline, panels
+  components/             stage gizmos, timeline, panels, setup wizard
 scripts/encode-server.mjs
 scripts/gpu-worker.mjs
 workers/comfyui/plate_loop.json
@@ -178,6 +193,6 @@ workers/comfyui/plate_loop.json
 
 - Native NDI/Spout sender (pop-out window-capture is the current web path)
 - Native NotchLC encoder (currently ProRes 4444 stand-in)
-- Prompt-driven motif variants (cinema stack still themed, palette-aware)
+- Optional lyrics overlay back in the editor (engine is parked, not deleted)
 - Wire gpu-worker POST /prompt fully against a live ComfyUI + CogVideoX box
 - Warp/blend for curved walls

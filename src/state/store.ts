@@ -15,6 +15,8 @@ import type {
   Viewpoint,
 } from "../types";
 import { parseLyrics } from "../lyrics/parse";
+import { parsePrompt } from "../generation/prompt";
+import { hasCompletedSetup, wantsForcedSetup } from "../setup/storage";
 
 let idCounter = 1;
 export const uid = (prefix: string) => `${prefix}-${idCounter++}`;
@@ -78,21 +80,25 @@ const defaultOutput: OutputSettings = {
 const defaultLyrics: LyricsState = {
   source: "",
   lines: [],
-  enabled: true,
-  mode: "span",
+  enabled: false,
+  mode: "off",
   karaoke: true,
   showNext: true,
 };
 
+const defaultPrompt =
+  "Create visuals that react to the tempo and beats, with an electric blue theme and graphics of angels descending into hell. Start, build, chorus, big finish.";
+const defaultLook = parsePrompt(defaultPrompt);
+
 const defaultGeneration: GenerationParams = {
-  prompt:
-    "Create visuals that react to the tempo and beats, with an electric blue theme and graphics of angels descending into hell. Start, build, chorus, big finish.",
+  prompt: defaultPrompt,
   modelId: "cinema",
   visualEngine: "cinema",
-  palette: ["#00b3ff", "#0044ff", "#7df9ff", "#0a0f2c", "#ff2d55"],
+  palette: defaultLook.palette,
   targetLoopSeconds: 24,
   targetLoopCount: 8,
-  motif: "angels descending into hell",
+  motif: defaultLook.motif,
+  look: defaultLook,
 };
 
 export interface Store extends ProjectState {
@@ -104,6 +110,11 @@ export interface Store extends ProjectState {
   gizmoMode: GizmoMode;
   exportProgress: ExportProgress;
   exportedClips: ExportedClip[];
+  /** First-run wizard. Editor stays hidden until the user finishes or skips. */
+  setupOpen: boolean;
+  editorReady: boolean;
+  /** Optional Veo/Seedance/Comfy master plate URL, mapped onto the cinema far plate. */
+  plateVideoUrl: string | null;
 
   // selection / playback
   selectScreen: (id: string | null) => void;
@@ -111,6 +122,11 @@ export interface Store extends ProjectState {
   setPlaying: (p: boolean) => void;
   toggleFrustums: () => void;
   setGizmoMode: (m: GizmoMode) => void;
+  openSetup: () => void;
+  closeSetup: () => void;
+  revealEditor: () => void;
+  applyStage: (screens: Screen[], eye: Vec3) => void;
+  setPlateVideoUrl: (url: string | null) => void;
 
   // screens & groups
   addScreen: () => void;
@@ -164,12 +180,30 @@ export const useStore = create<Store>((set) => ({
   gizmoMode: "eye",
   exportProgress: { active: false, label: "", current: 0, total: 0, error: null },
   exportedClips: [],
+  setupOpen: !hasCompletedSetup() || wantsForcedSetup(),
+  editorReady: hasCompletedSetup(),
+  plateVideoUrl: null,
 
   selectScreen: (id) => set({ selectedScreenId: id }),
   setPlayhead: (t) => set({ playhead: t }),
   setPlaying: (p) => set({ playing: p }),
   toggleFrustums: () => set((s) => ({ showFrustums: !s.showFrustums })),
   setGizmoMode: (gizmoMode) => set({ gizmoMode }),
+  openSetup: () => set({ setupOpen: true }),
+  closeSetup: () => set({ setupOpen: false }),
+  revealEditor: () => set({ editorReady: true, setupOpen: false }),
+  applyStage: (screens, eye) =>
+    set({
+      screens: screens.map((s) => ({
+        ...s,
+        resolution: { ...s.resolution },
+        size: { ...s.size },
+        position: [...s.position] as Vec3,
+        rotation: [...s.rotation] as Vec3,
+      })),
+      viewpoint: { position: [...eye] as Vec3, overrides: {} },
+      selectedScreenId: screens[0]?.id ?? null,
+    }),
 
   addScreen: () =>
     set((s) => {
@@ -253,6 +287,7 @@ export const useStore = create<Store>((set) => ({
 
   setGenerating: (isGenerating) => set({ isGenerating }),
   setLoops: (loops) => set({ loops }),
+  setPlateVideoUrl: (plateVideoUrl) => set({ plateVideoUrl }),
 
   updateLyrics: (patch) => set((s) => ({ lyrics: { ...s.lyrics, ...patch } })),
   setLyricsSource: (source, duration, barSec = 2) =>

@@ -6,11 +6,11 @@ import { SceneTree } from "./components/SceneTree";
 import { ScreenInspector } from "./components/ScreenInspector";
 import { ViewpointPanel } from "./components/ViewpointPanel";
 import { AudioPanel } from "./components/AudioPanel";
-import { LyricsPanel } from "./components/LyricsPanel";
 import { GenerationPanel } from "./components/GenerationPanel";
 import { OutputPanel } from "./components/OutputPanel";
 import { Timeline } from "./components/Timeline";
 import { PreviewPanel } from "./components/PreviewPanel";
+import { SetupWizard } from "./components/SetupWizard";
 import type { GizmoMode } from "./types";
 
 const KEY_MODE: Record<string, GizmoMode> = {
@@ -26,6 +26,7 @@ export function App() {
   const setPlayhead = useStore((s) => s.setPlayhead);
   const setPlaying = useStore((s) => s.setPlaying);
   const setGizmoMode = useStore((s) => s.setGizmoMode);
+  const editorReady = useStore((s) => s.editorReady);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   if (!audioRef.current) audioRef.current = new Audio();
@@ -34,6 +35,7 @@ export function App() {
     const onKey = (ev: KeyboardEvent) => {
       const t = ev.target as HTMLElement | null;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT")) return;
+      if (useStore.getState().setupOpen) return;
       const mode = KEY_MODE[ev.key.toLowerCase()];
       if (mode) {
         ev.preventDefault();
@@ -100,27 +102,31 @@ export function App() {
   }, [setPlayhead, setPlaying]);
 
   return (
-    <div className="app">
-      <Topbar />
-      <div className="sidebar left">
-        <SceneTree />
-        <ScreenInspector />
-        <ViewpointPanel />
-      </div>
-      <div className="stage">
-        <StageToolbar />
-        <StageView />
-      </div>
-      <div className="sidebar right">
-        <AudioPanel />
-        <LyricsPanel />
-        <GenerationPanel />
-        <OutputPanel />
-      </div>
-      <div className="bottom">
-        <Timeline onSeek={onSeek} onTogglePlay={onTogglePlay} onStop={onStop} />
-        <PreviewPanel />
-      </div>
-    </div>
+    <>
+      {editorReady && (
+        <div className="app">
+          <Topbar />
+          <div className="sidebar left">
+            <SceneTree />
+            <ScreenInspector />
+            <ViewpointPanel />
+          </div>
+          <div className="stage">
+            <StageToolbar />
+            <StageView />
+          </div>
+          <div className="sidebar right">
+            <AudioPanel />
+            <GenerationPanel />
+            <OutputPanel />
+          </div>
+          <div className="bottom">
+            <Timeline onSeek={onSeek} onTogglePlay={onTogglePlay} onStop={onStop} />
+            <PreviewPanel />
+          </div>
+        </div>
+      )}
+      <SetupWizard />
+    </>
   );
 }
