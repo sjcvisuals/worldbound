@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import type { LoopVisual } from "../../types";
+import type { LoopVisual, LookRecipe } from "../../types";
+import { emptyLook } from "../../generation/prompt";
 import { ANGEL_GLSL, LOOP_GLSL, NOISE_GLSL } from "./glsl";
 
 /**
@@ -30,6 +31,17 @@ export interface CinemaUniforms {
   uColTop: { value: THREE.Color };
   uColMid: { value: THREE.Color };
   uColBottom: { value: THREE.Color };
+  uFigures: { value: number };
+  uFire: { value: number };
+  uWater: { value: number };
+  uGrid: { value: number };
+  uBolt: { value: number };
+  uDust: { value: number };
+  uTunnel: { value: number };
+  uSmoke: { value: number };
+  uStars: { value: number };
+  uPlate: { value: number };
+  tPlate: { value: THREE.Texture };
 }
 
 const VERT = /* glsl */ `
@@ -49,6 +61,9 @@ function farFrag(): string {
     varying vec2 vUv;
     uniform float uEnergy; uniform float uIntensity; uniform float uBeat;
     uniform vec3 uColTop; uniform vec3 uColMid; uniform vec3 uColBottom;
+    uniform float uFire; uniform float uWater; uniform float uGrid;
+    uniform float uBolt; uniform float uTunnel; uniform float uStars; uniform float uSmoke;
+    uniform float uPlate; uniform sampler2D tPlate;
     ${LOOP_GLSL}
     ${NOISE_GLSL}
     void main(){
@@ -69,11 +84,11 @@ function farFrag(): string {
 
       // Ridged energy veins (lightning in the cloud).
       float vein = pow(ridge(uv * vec2(3.4, 5.0) + vec2(ph * cy, 0.0)), 4.5);
-      col += mix(uColMid, uColTop, h) * vein * (0.55 + uBeat * 1.4 + uEnergy);
+      col += mix(uColMid, uColTop, h) * vein * (0.55 + uBeat * 1.4 + uEnergy) * max(0.12, uBolt);
 
-      // Hell mouth — turbulent fire well, looping rise.
+      // Hell mouth — only when the prompt asked for fire/heat.
       float fire = fbmWarp(vec2(uv.x * 4.6, uv.y * 3.2 - ph * cy * 1.6), ph);
-      fire = pow(max(fire, 0.0), 1.25) * smoothstep(0.48, 0.0, h);
+      fire = pow(max(fire, 0.0), 1.25) * smoothstep(0.48, 0.0, h) * uFire;
       vec3 fireCol = mix(uColBottom, vec3(1.0, 0.55, 0.12), fire);
       col += fireCol * fire * (1.6 + uBeat * 1.8 + uEnergy);
 
@@ -81,7 +96,7 @@ function farFrag(): string {
       float heaven = pow(h, 1.85) * (0.28 + 0.5 * uIntensity);
       col += uColTop * heaven * (0.4 + 0.4 * n2);
       float stars = pow(hash21(floor(uv * 220.0 + vec2(uTime * 0.0, 3.1))), 28.0);
-      col += uColTop * stars * smoothstep(0.4, 1.0, h) * 1.8;
+      col += uColTop * stars * smoothstep(0.4, 1.0, h) * 1.8 * uStars;
 
       // Vertical god-ray shafts (CC Light Rays).
       float shafts = 0.0;
@@ -91,11 +106,34 @@ function farFrag(): string {
         float s = exp(-pow(x * (8.0 + fi * 0.55), 2.0)) * (0.16 + 0.14 * uEnergy);
         shafts += s * mix(h, 1.0 - h * 0.35, 0.4);
       }
-      col += mix(uColMid, uColTop, h) * shafts * (1.1 + uBeat * 1.3);
+      col += mix(uColMid, uColTop, h) * shafts * (1.1 + uBeat * 1.3) * (0.35 + uSmoke);
 
       // Horizon glow so the plate never reads as empty mid-frame.
       float band = exp(-pow((h - 0.28) * 6.0, 2.0));
       col += uColMid * band * (0.18 + 0.22 * uEnergy);
+
+      // Grid / laser lattice
+      float gx = abs(fract(uv.x * 22.0) - 0.5);
+      float gy = abs(fract(uv.y * 12.0 + ph * cy * 0.15) - 0.5);
+      float grid = (1.0 - smoothstep(0.0, 0.045, gx)) + (1.0 - smoothstep(0.0, 0.05, gy));
+      col += uColTop * grid * uGrid * (0.35 + 0.45 * uBeat);
+
+      // Tunnel / hyperspace
+      vec2 tp = uv - 0.5;
+      float rad = length(tp);
+      float tun = pow(0.55 + 0.45 * sin(rad * 26.0 - ph * 6.2831 * cy * 2.0), 4.0);
+      tun *= smoothstep(0.02, 0.55, rad);
+      col += mix(uColMid, uColTop, clamp(rad * 1.6, 0.0, 1.0)) * tun * uTunnel * 1.3;
+
+      // Water / caustics
+      float ca = fbm(uv * vec2(5.0, 9.0) + vec2(ph * cy * 1.2, sin(uv.x * 12.0 + ph * 6.28)));
+      col = mix(col, mix(uColMid, uColTop, ca), uWater * 0.4);
+      col += uColTop * pow(ca, 6.0) * uWater * 0.8;
+
+      if (uPlate > 0.01) {
+        vec3 plate = texture2D(tPlate, uv).rgb;
+        col = mix(col, plate, clamp(uPlate, 0.0, 1.0));
+      }
 
       col *= 0.7 + 0.85 * uIntensity;
       gl_FragColor = vec4(col, 1.0);
@@ -108,10 +146,12 @@ function hazeFrag(): string {
     precision highp float;
     varying vec2 vUv;
     uniform float uEnergy; uniform float uIntensity; uniform float uBeat;
+    uniform float uSmoke;
     uniform vec3 uColTop; uniform vec3 uColMid; uniform vec3 uColBottom;
     ${LOOP_GLSL}
     ${NOISE_GLSL}
     void main(){
+      if (uSmoke < 0.02) discard;
       float ph = loopPhase();
       float cy = loopCycles();
       vec2 uv = vUv;
@@ -123,6 +163,7 @@ function hazeFrag(): string {
       float a = fog * (0.18 + 0.35 * uEnergy) * (0.5 + 0.7 * uIntensity);
       a *= 0.55 + 0.45 * h;
       a += uBeat * 0.06;
+      a *= max(0.0, uSmoke);
       if (a < 0.02) discard;
       gl_FragColor = vec4(col * a * 1.4, clamp(a, 0.0, 1.0));
     }
@@ -135,11 +176,13 @@ function angelFrag(): string {
     varying vec2 vUv;
     uniform float uEnergy; uniform float uIntensity; uniform float uBeat;
     uniform float uDensity; uniform float uBeatPunch; uniform float uSeed;
+    uniform float uFigures;
     uniform vec3 uColTop; uniform vec3 uColMid; uniform vec3 uColBottom;
     ${LOOP_GLSL}
     ${NOISE_GLSL}
     ${ANGEL_GLSL}
     void main(){
+      if (uFigures < 0.02) discard;
       float ph = loopPhase();
       float cy = loopCycles();
       float d = 1e5;
@@ -185,7 +228,7 @@ function angelFrag(): string {
       col = mix(col, vec3(1.0), core * 0.22);
       float punch = 1.0 + uBeat * uBeatPunch * 1.6;
       float a = (fill * 0.82 + glow * 0.48 + core * 0.65 + haloAcc * 0.75 + trail * 0.65) * punch;
-      a *= 0.5 + 0.65 * uIntensity + 0.35 * uEnergy;
+      a *= (0.5 + 0.65 * uIntensity + 0.35 * uEnergy) * uFigures;
       if (a < 0.02) discard;
       gl_FragColor = vec4(col * a, clamp(a, 0.0, 1.0));
     }
@@ -197,10 +240,13 @@ function ribbonFrag(): string {
     precision highp float;
     varying vec2 vUv;
     uniform float uEnergy; uniform float uIntensity; uniform float uBeat;
-    uniform float uDensity; uniform vec3 uColTop; uniform vec3 uColMid; uniform vec3 uColBottom;
+    uniform float uDensity; uniform float uBolt; uniform float uGrid; uniform float uFire;
+    uniform vec3 uColTop; uniform vec3 uColMid; uniform vec3 uColBottom;
     ${LOOP_GLSL}
     ${NOISE_GLSL}
     void main(){
+      float ribbonAmt = max(uBolt, max(uGrid, uFire * 0.4));
+      if (ribbonAmt < 0.03) discard;
       float ph = loopPhase();
       float cy = loopCycles();
       vec2 uv = vUv;
@@ -227,6 +273,7 @@ function ribbonFrag(): string {
       acc += wisp * 0.3;
       float a = acc * (0.35 + 0.7 * uIntensity) * (0.55 + 0.7 * uEnergy);
       a *= 1.0 + uBeat * 0.8;
+      a *= ribbonAmt;
       if (a < 0.02) discard;
       gl_FragColor = vec4(col * (1.0 + uBeat), clamp(a, 0.0, 1.0));
     }
@@ -238,10 +285,12 @@ function emberFrag(): string {
     precision highp float;
     varying vec2 vUv;
     uniform float uEnergy; uniform float uIntensity; uniform float uBeat;
-    uniform float uDensity; uniform vec3 uColTop; uniform vec3 uColMid; uniform vec3 uColBottom;
+    uniform float uDensity; uniform float uDust;
+    uniform vec3 uColTop; uniform vec3 uColMid; uniform vec3 uColBottom;
     ${LOOP_GLSL}
     ${NOISE_GLSL}
     void main(){
+      if (uDust < 0.02) discard;
       float ph = loopPhase();
       float cy = loopCycles();
       vec2 uv = vUv;
@@ -285,7 +334,7 @@ function emberFrag(): string {
       acc += dust;
 
       float punch = 1.0 + uBeat * 1.7;
-      float a = acc * punch * (0.45 + 0.85 * uEnergy) * (0.55 + 0.7 * uIntensity);
+      float a = acc * punch * (0.45 + 0.85 * uEnergy) * (0.55 + 0.7 * uIntensity) * max(0.08, uDust);
       if (a < 0.012) discard;
       gl_FragColor = vec4(col * punch, clamp(a, 0.0, 1.0));
     }
@@ -300,9 +349,15 @@ export class CinemaWorld {
   private angels: THREE.Mesh;
   private ribbons: THREE.Mesh;
   private embers: THREE.Mesh;
+  private dummyPlate: THREE.DataTexture;
+  private plateVideo: HTMLVideoElement | null = null;
+  private plateTexture: THREE.VideoTexture | null = null;
+  private plateUrl = "";
 
   constructor() {
     this.scene = new THREE.Scene();
+    this.dummyPlate = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+    this.dummyPlate.needsUpdate = true;
     this.uniforms = {
       uTime: { value: 0 },
       uLoopLength: { value: 0 },
@@ -316,6 +371,17 @@ export class CinemaWorld {
       uColTop: { value: new THREE.Color("#d8fbff") },
       uColMid: { value: new THREE.Color("#00b3ff") },
       uColBottom: { value: new THREE.Color("#ff2d55") },
+      uFigures: { value: 0 },
+      uFire: { value: 0 },
+      uWater: { value: 0 },
+      uGrid: { value: 0 },
+      uBolt: { value: 0 },
+      uDust: { value: 0.35 },
+      uTunnel: { value: 0 },
+      uSmoke: { value: 0.25 },
+      uStars: { value: 0.2 },
+      uPlate: { value: 0 },
+      tPlate: { value: this.dummyPlate },
     };
 
     this.far = this.layer(farFrag(), false, [130, 74], [0, 2.4, -34]);
@@ -353,6 +419,46 @@ export class CinemaWorld {
     this.uniforms.uDensity.value = Math.min(1, v.density * 1.1);
     this.uniforms.uBeatPunch.value = v.beatPunch;
     this.uniforms.uSeed.value = v.seed;
+    const look: LookRecipe = v.look ?? emptyLook();
+    this.uniforms.uFigures.value = look.figures;
+    this.uniforms.uFire.value = look.fire;
+    this.uniforms.uWater.value = look.water;
+    this.uniforms.uGrid.value = look.grid;
+    this.uniforms.uBolt.value = look.lightning;
+    this.uniforms.uDust.value = look.particles;
+    this.uniforms.uTunnel.value = look.tunnel;
+    this.uniforms.uSmoke.value = look.smoke;
+    this.uniforms.uStars.value = look.stars;
+    this.angels.visible = look.figures > 0.02;
+    this.haze.visible = look.smoke > 0.02;
+    this.ribbons.visible = Math.max(look.lightning, look.grid, look.fire * 0.4) > 0.03;
+    this.embers.visible = look.particles > 0.02;
+  }
+
+  setPlateVideo(url: string | null) {
+    if (!url) {
+      this.plateUrl = "";
+      this.uniforms.uPlate.value = 0;
+      this.uniforms.tPlate.value = this.dummyPlate;
+      this.plateVideo?.pause();
+      return;
+    }
+    if (url === this.plateUrl) return;
+    this.plateUrl = url;
+    if (!this.plateVideo) {
+      this.plateVideo = document.createElement("video");
+      this.plateVideo.crossOrigin = "anonymous";
+      this.plateVideo.loop = true;
+      this.plateVideo.muted = true;
+      this.plateVideo.playsInline = true;
+      this.plateTexture = new THREE.VideoTexture(this.plateVideo);
+      this.plateTexture.minFilter = THREE.LinearFilter;
+      this.plateTexture.magFilter = THREE.LinearFilter;
+    }
+    this.plateVideo.src = url;
+    this.plateVideo.play().catch(() => undefined);
+    this.uniforms.tPlate.value = this.plateTexture!;
+    this.uniforms.uPlate.value = 1;
   }
 
   setTime(t: number, loopLength = 0) {

@@ -8,8 +8,13 @@ export function generateFromStore(): { ok: boolean; status: string; count: numbe
     return { ok: false, status: "Load and analyse an audio track first.", count: 0 };
   }
   const parsed = parsePrompt(st.generation.prompt);
-  const params = { ...st.generation, palette: parsed.palette, motif: parsed.motif };
-  st.updateGeneration({ palette: parsed.palette, motif: parsed.motif });
+  const params = {
+    ...st.generation,
+    palette: parsed.palette,
+    motif: parsed.motif,
+    look: parsed,
+  };
+  st.updateGeneration({ palette: parsed.palette, motif: parsed.motif, look: parsed });
   const generated = generateLoops(st.audio.analysis, params);
   st.setLoops(generated);
   return {

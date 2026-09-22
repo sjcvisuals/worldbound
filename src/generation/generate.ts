@@ -84,6 +84,7 @@ export function generateLoops(analysis: AudioAnalysis, params: GenerationParams)
       density: clamp01(0.25 + 0.6 * progression + 0.2 * (intensity - 0.5)),
       beatPunch: clamp01(0.4 + 0.5 * SECTION_INTENSITY[section]),
       motif: params.motif,
+      look: params.look,
     };
 
     loops.push({

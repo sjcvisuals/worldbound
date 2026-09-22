@@ -27,9 +27,11 @@ function RenderDriver() {
     const { screens, groups, viewpoint, loops, playhead, generation } = st;
 
     engine.setLook(generation.visualEngine === "volumetric" ? "volumetric" : "cinema");
+    engine.cinema.setPlateVideo(st.plateVideoUrl);
     const active = loops.find((l) => playhead >= l.startSec && playhead < l.endSec);
+    const look = generation.look;
     if (active) {
-      engine.world.applyLoopVisual(active.visual);
+      engine.world.applyLoopVisual({ ...active.visual, look: look ?? active.visual.look });
       engine.world.setTime(playhead - active.startSec, active.lengthSec);
     } else {
       engine.world.applyLoopVisual({
@@ -40,6 +42,7 @@ function RenderDriver() {
         density: 0.7,
         beatPunch: 0.55,
         motif: generation.motif,
+        look,
       });
       engine.world.setTime(playhead, 0);
     }
@@ -56,16 +59,20 @@ function RenderDriver() {
     lastPlay.current = playhead;
 
     engine.world.pulse(Math.min(dt, 0.05), sampleEnergy(playhead), beat);
-    engine.setLyricsFrame({
-      enabled: st.lyrics.enabled,
-      mode: st.lyrics.mode,
-      lines: st.lyrics.lines,
-      playhead,
-      karaoke: st.lyrics.karaoke,
-      showNext: st.lyrics.showNext,
-      fill: generation.palette[0] ?? "#00b3ff",
-      beat: engine.world.uniforms.uBeat.value,
-    });
+    if (st.lyrics.enabled && st.lyrics.mode !== "off" && st.lyrics.lines.length) {
+      engine.setLyricsFrame({
+        enabled: true,
+        mode: st.lyrics.mode,
+        lines: st.lyrics.lines,
+        playhead,
+        karaoke: st.lyrics.karaoke,
+        showNext: st.lyrics.showNext,
+        fill: generation.palette[0] ?? "#00b3ff",
+        beat: engine.world.uniforms.uBeat.value,
+      });
+    } else {
+      engine.setLyricsFrame(null);
+    }
     engine.renderScreens(gl, screens, groups, viewpoint);
   }, 0);
 

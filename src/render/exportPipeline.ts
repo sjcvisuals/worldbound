@@ -121,7 +121,11 @@ export async function runExport(opts: {
       });
 
       engine.setLook(st.generation.visualEngine === "volumetric" ? "volumetric" : "cinema");
-      engine.world.applyLoopVisual(job.loop.visual);
+      engine.cinema.setPlateVideo(st.plateVideoUrl);
+      engine.world.applyLoopVisual({
+        ...job.loop.visual,
+        look: st.generation.look ?? job.loop.visual.look,
+      });
 
       const mp4 = await encodeH264Mp4({
         width,

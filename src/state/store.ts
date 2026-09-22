@@ -15,6 +15,7 @@ import type {
   Viewpoint,
 } from "../types";
 import { parseLyrics } from "../lyrics/parse";
+import { parsePrompt } from "../generation/prompt";
 import { hasCompletedSetup, wantsForcedSetup } from "../setup/storage";
 
 let idCounter = 1;
@@ -79,21 +80,25 @@ const defaultOutput: OutputSettings = {
 const defaultLyrics: LyricsState = {
   source: "",
   lines: [],
-  enabled: true,
-  mode: "span",
+  enabled: false,
+  mode: "off",
   karaoke: true,
   showNext: true,
 };
 
+const defaultPrompt =
+  "Create visuals that react to the tempo and beats, with an electric blue theme and graphics of angels descending into hell. Start, build, chorus, big finish.";
+const defaultLook = parsePrompt(defaultPrompt);
+
 const defaultGeneration: GenerationParams = {
-  prompt:
-    "Create visuals that react to the tempo and beats, with an electric blue theme and graphics of angels descending into hell. Start, build, chorus, big finish.",
+  prompt: defaultPrompt,
   modelId: "cinema",
   visualEngine: "cinema",
-  palette: ["#00b3ff", "#0044ff", "#7df9ff", "#0a0f2c", "#ff2d55"],
+  palette: defaultLook.palette,
   targetLoopSeconds: 24,
   targetLoopCount: 8,
-  motif: "angels descending into hell",
+  motif: defaultLook.motif,
+  look: defaultLook,
 };
 
 export interface Store extends ProjectState {
@@ -108,6 +113,8 @@ export interface Store extends ProjectState {
   /** First-run wizard. Editor stays hidden until the user finishes or skips. */
   setupOpen: boolean;
   editorReady: boolean;
+  /** Optional Veo/Seedance/Comfy master plate URL, mapped onto the cinema far plate. */
+  plateVideoUrl: string | null;
 
   // selection / playback
   selectScreen: (id: string | null) => void;
@@ -119,6 +126,7 @@ export interface Store extends ProjectState {
   closeSetup: () => void;
   revealEditor: () => void;
   applyStage: (screens: Screen[], eye: Vec3) => void;
+  setPlateVideoUrl: (url: string | null) => void;
 
   // screens & groups
   addScreen: () => void;
@@ -174,6 +182,7 @@ export const useStore = create<Store>((set) => ({
   exportedClips: [],
   setupOpen: !hasCompletedSetup() || wantsForcedSetup(),
   editorReady: hasCompletedSetup(),
+  plateVideoUrl: null,
 
   selectScreen: (id) => set({ selectedScreenId: id }),
   setPlayhead: (t) => set({ playhead: t }),
@@ -278,6 +287,7 @@ export const useStore = create<Store>((set) => ({
 
   setGenerating: (isGenerating) => set({ isGenerating }),
   setLoops: (loops) => set({ loops }),
+  setPlateVideoUrl: (plateVideoUrl) => set({ plateVideoUrl }),
 
   updateLyrics: (patch) => set((s) => ({ lyrics: { ...s.lyrics, ...patch } })),
   setLyricsSource: (source, duration, barSec = 2) =>

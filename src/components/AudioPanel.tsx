@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useStore } from "../state/store";
 import { analyzeAudio } from "../audio/analyze";
-import { DEMO_LYRICS_LRC } from "../lyrics/demo";
 
 export function AudioPanel() {
   const audio = useStore((s) => s.audio);
@@ -9,18 +8,12 @@ export function AudioPanel() {
   const setAnalysis = useStore((s) => s.setAnalysis);
   const [status, setStatus] = useState("");
 
-  const setLyricsSource = useStore((s) => s.setLyricsSource);
-
   async function load(name: string, url: string) {
     setAudio(name, url);
     setStatus("Analysing audio…");
     try {
       const analysis = await analyzeAudio(url);
       setAnalysis(analysis);
-      if (url.includes("demo-track")) {
-        const barSec = (60 / analysis.bpm) * 4;
-        setLyricsSource(DEMO_LYRICS_LRC, analysis.duration, barSec);
-      }
       setStatus(
         `Analysed · ${analysis.bpm} BPM · ${analysis.beats.length} beats · ${analysis.sections.length} sections`
       );

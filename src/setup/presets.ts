@@ -6,8 +6,6 @@ export interface StagePreset {
   id: string;
   name: string;
   blurb: string;
-  /** Suggested lyrics mapping for this hang. */
-  lyricsMode: "span" | "each";
   viewpoint: Vec3;
   screens: Screen[];
 }
@@ -35,8 +33,7 @@ export const STAGE_PRESETS: StagePreset[] = [
   {
     id: "wrap",
     name: "Concert wrap",
-    blurb: "Centre LED plus two angled side walls. Content and lyrics flow across the array.",
-    lyricsMode: "span",
+    blurb: "Centre LED plus two angled side walls. Content flows across the array.",
     viewpoint: [0, 1.7, 12],
     screens: [
       wall("screen-left", "Left Wall", [1920, 1080], [6, 3.375], [-6.4, 1.7, 2.2], [0, 35, 0]),
@@ -48,15 +45,13 @@ export const STAGE_PRESETS: StagePreset[] = [
     id: "single",
     name: "Single wall",
     blurb: "One 16:9 LED backdrop — club, lecture, or IMAG.",
-    lyricsMode: "each",
     viewpoint: [0, 2, 14],
     screens: [wall("screen-center", "Main Wall", [3840, 2160], [12, 6.75], [0, 2, 0], [0, 0, 0])],
   },
   {
     id: "imag",
     name: "Dual IMAG",
-    blurb: "Matching left and right screens. Same picture on both, or span lyrics.",
-    lyricsMode: "each",
+    blurb: "Matching left and right screens. Same picture on both.",
     viewpoint: [0, 1.7, 12],
     screens: [
       wall("screen-left", "Left IMAG", [1920, 1080], [6, 3.375], [-5.5, 1.8, 1.2], [0, 18, 0]),
@@ -66,8 +61,7 @@ export const STAGE_PRESETS: StagePreset[] = [
   {
     id: "ultrawide",
     name: "Ultra-wide banner",
-    blurb: "One long 32:9 wall. Lyrics read as a single concert banner.",
-    lyricsMode: "span",
+    blurb: "One long 32:9 wall — festival header or stage fascia.",
     viewpoint: [0, 1.6, 16],
     screens: [wall("screen-center", "Banner", [3840, 1080], [20, 5.625], [0, 1.8, 0], [0, 0, 0])],
   },

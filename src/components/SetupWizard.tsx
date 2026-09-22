@@ -1,18 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useStore } from "../state/store";
 import { analyzeAudio } from "../audio/analyze";
-import { DEMO_LYRICS_LRC } from "../lyrics/demo";
-import { parsePrompt } from "../generation/prompt";
+import { lookTags, parsePrompt } from "../generation/prompt";
 import { generateFromStore } from "../generation/run";
+import { GENERATION_MODELS } from "../generation/models";
 import { LOOK_CHIPS, STAGE_PRESETS, presetById } from "../setup/presets";
 import { markSetupComplete } from "../setup/storage";
-import type { Codec, ColorProfile, LyricsMapMode } from "../types";
+import type { Codec, ColorProfile } from "../types";
 
 const STEPS = [
   { id: "welcome", title: "Welcome" },
   { id: "stage", title: "Stage" },
   { id: "audio", title: "Audio" },
-  { id: "lyrics", title: "Lyrics" },
   { id: "look", title: "Look" },
   { id: "delivery", title: "Delivery" },
   { id: "go", title: "Open" },
@@ -28,14 +27,11 @@ export function SetupWizard() {
   const applyStage = useStore((s) => s.applyStage);
   const setAudio = useStore((s) => s.setAudio);
   const setAnalysis = useStore((s) => s.setAnalysis);
-  const setLyricsSource = useStore((s) => s.setLyricsSource);
-  const updateLyrics = useStore((s) => s.updateLyrics);
   const updateGeneration = useStore((s) => s.updateGeneration);
   const updateOutput = useStore((s) => s.updateOutput);
   const setGenerating = useStore((s) => s.setGenerating);
   const generation = useStore((s) => s.generation);
   const output = useStore((s) => s.output);
-  const lyrics = useStore((s) => s.lyrics);
   const audio = useStore((s) => s.audio);
 
   const [step, setStep] = useState<StepId>(editorReady ? "stage" : "welcome");
@@ -45,18 +41,17 @@ export function SetupWizard() {
   const [busy, setBusy] = useState(false);
   const [finishError, setFinishError] = useState("");
   const [prompt, setPrompt] = useState(generation.prompt);
-  const [lyricDraft, setLyricDraft] = useState(lyrics.source);
 
   const idx = STEPS.findIndex((s) => s.id === step);
   const overlay = editorReady;
   const preset = useMemo(() => presetById(presetId), [presetId]);
   const parsed = useMemo(() => parsePrompt(prompt), [prompt]);
+  const tags = lookTags(parsed);
 
   useEffect(() => {
     if (!open) return;
     setStep(editorReady ? "stage" : "welcome");
     setPrompt(useStore.getState().generation.prompt);
-    setLyricDraft(useStore.getState().lyrics.source);
   }, [open, editorReady]);
 
   if (!open) return null;
@@ -68,6 +63,15 @@ export function SetupWizard() {
   function skipToEditor() {
     markSetupComplete();
     revealEditor();
+  }
+
+  function commitLook() {
+    updateGeneration({
+      prompt,
+      palette: parsed.palette,
+      motif: parsed.motif,
+      look: parsed,
+    });
   }
 
   async function loadAudio(name: string, url: string) {
@@ -95,23 +99,15 @@ export function SetupWizard() {
     setFinishError("");
     try {
       applyStage(preset.screens, preset.viewpoint);
+      const model = GENERATION_MODELS.find((m) => m.id === generation.modelId);
       updateGeneration({
         prompt,
         palette: parsed.palette,
         motif: parsed.motif,
-        visualEngine: generation.visualEngine,
-        modelId: generation.visualEngine === "volumetric" ? "volumetric" : "cinema",
+        look: parsed,
+        visualEngine: generation.modelId === "volumetric" ? "volumetric" : "cinema",
+        modelId: model?.id ?? "cinema",
       });
-      const duration = useStore.getState().audio?.analysis?.duration ?? 96;
-      const bpm = useStore.getState().audio?.analysis?.bpm ?? 120;
-      const barSec = (60 / bpm) * 4;
-      if (lyricDraft.trim()) {
-        setLyricsSource(lyricDraft, duration, barSec);
-        const mode = useStore.getState().lyrics.mode;
-        updateLyrics({ enabled: mode !== "off" });
-      } else {
-        updateLyrics({ source: "", lines: [], enabled: false });
-      }
       if (generate && useStore.getState().audio?.analysis) {
         setGenerating(true);
         generateFromStore();
@@ -158,9 +154,9 @@ export function SetupWizard() {
             <p className="wizard-kicker">Worldbound</p>
             <h2 id="wizard-title">Let’s set up your show</h2>
             <p className="wizard-lede">
-              A few short questions — stage hang, audio, lyrics, look — then the 3D
-              editor opens with that world already on the walls. You can move
-              screens and tweak everything after.
+              A few short questions — stage hang, audio, look — then the 3D editor
+              opens with that world already on the walls. You can move screens and
+              tweak everything after.
             </p>
             <div className="wizard-actions">
               <button className="btn primary" onClick={() => go("stage")}>
@@ -182,10 +178,7 @@ export function SetupWizard() {
                 <button
                   key={p.id}
                   className={"wizard-choice" + (presetId === p.id ? " on" : "")}
-                  onClick={() => {
-                    setPresetId(p.id);
-                    updateLyrics({ mode: p.lyricsMode });
-                  }}
+                  onClick={() => setPresetId(p.id)}
                 >
                   <StageGlyph id={p.id} />
                   <strong>{p.name}</strong>
@@ -230,49 +223,7 @@ export function SetupWizard() {
                 <span>{audioStatus || (audio.analysis ? `${audio.analysis.bpm.toFixed(0)} BPM` : "Loaded")}</span>
               </div>
             )}
-            <Nav back={back} next={next} nextLabel="Next · lyrics" skip={{ label: "Skip audio", onClick: next }} />
-          </>
-        )}
-
-        {step === "lyrics" && (
-          <>
-            <h2 id="wizard-title">Lyrics on the walls?</h2>
-            <p className="wizard-lede">
-              Paste LRC or plain lines. On a wrap they span as whole words so bezels never cut a glyph. Dual IMAG defaults to the same line on each screen.
-            </p>
-            <textarea
-              value={lyricDraft}
-              onChange={(e) => setLyricDraft(e.target.value)}
-              placeholder={"[00:00.00]WAIT IN THE DARK\n[00:04.00]HOLD YOUR BREATH"}
-              style={{ minHeight: 120 }}
-            />
-            <div className="wizard-actions" style={{ marginTop: 8 }}>
-              <button className="btn sm" onClick={() => setLyricDraft(DEMO_LYRICS_LRC)}>
-                Load demo lyrics
-              </button>
-              <div className="toggle">
-                {(["span", "each", "off"] as LyricsMapMode[]).map((m) => (
-                  <button
-                    key={m}
-                    className={lyrics.mode === m ? "on" : ""}
-                    onClick={() => updateLyrics({ mode: m, enabled: m !== "off" })}
-                  >
-                    {m === "span" ? "Span group" : m === "each" ? "Each screen" : "Off"}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <Nav
-              back={back}
-              next={() => {
-                const duration = audio?.analysis?.duration ?? 96;
-                const bpm = audio?.analysis?.bpm ?? 120;
-                if (lyricDraft.trim()) setLyricsSource(lyricDraft, duration, (60 / bpm) * 4);
-                next();
-              }}
-              nextLabel="Next · look"
-              skip={{ label: "No lyrics", onClick: () => { setLyricDraft(""); next(); } }}
-            />
+            <Nav back={back} next={next} nextLabel="Next · look" skip={{ label: "Skip audio", onClick: next }} />
           </>
         )}
 
@@ -280,7 +231,9 @@ export function SetupWizard() {
           <>
             <h2 id="wizard-title">What should it look like?</h2>
             <p className="wizard-lede">
-              Describe the show. Cinema 2.5D is the live-event default (AE / Notch-style plates). You can generate again from the editor.
+              Describe the show. Cinema plates turn that prompt into a layer recipe
+              (fire vs grid vs figures) so the walls match what you asked for. Veo or
+              Seedance can replace the far plate later if you attach an API key.
             </p>
             <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} style={{ minHeight: 90 }} />
             <div className="wizard-chips">
@@ -294,12 +247,48 @@ export function SetupWizard() {
                 </button>
               ))}
             </div>
+            <div className="wizard-chips" style={{ marginTop: 6 }}>
+              {tags.length ? (
+                tags.map((t) => (
+                  <span key={t} className="pill on">
+                    {t}
+                  </span>
+                ))
+              ) : (
+                <span className="pill">abstract energy</span>
+              )}
+            </div>
             <div className="row" style={{ marginTop: 10 }}>
+              <label>Model</label>
+              <select
+                value={generation.modelId}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  updateGeneration({
+                    modelId: id,
+                    visualEngine: id === "volumetric" ? "volumetric" : "cinema",
+                  });
+                }}
+              >
+                {GENERATION_MODELS.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                    {m.kind === "backend" ? " — API / GPU" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="row" style={{ marginTop: 8 }}>
               <label>Look</label>
               <div className="toggle">
                 <button
                   className={generation.visualEngine === "cinema" ? "on" : ""}
-                  onClick={() => updateGeneration({ visualEngine: "cinema", modelId: "cinema" })}
+                  onClick={() =>
+                    updateGeneration({
+                      visualEngine: "cinema",
+                      modelId: generation.modelId === "volumetric" ? "cinema" : generation.modelId,
+                    })
+                  }
                 >
                   Cinema 2.5D
                 </button>
@@ -319,7 +308,7 @@ export function SetupWizard() {
             <Nav
               back={back}
               next={() => {
-                updateGeneration({ prompt, palette: parsed.palette, motif: parsed.motif });
+                commitLook();
                 next();
               }}
               nextLabel="Next · delivery"
@@ -380,10 +369,11 @@ export function SetupWizard() {
                 {audio?.analysis ? ` · ${audio.analysis.bpm.toFixed(0)} BPM` : ""}
               </li>
               <li>
-                <em>Lyrics</em> {lyricDraft.trim() ? `${lyricDraft.trim().split(/\n/).filter(Boolean).length} lines · ${lyrics.mode}` : "Off for now"}
+                <em>Look</em> {generation.visualEngine === "volumetric" ? "Volumetric 3D" : "Cinema 2.5D"} ·{" "}
+                {tags.length ? tags.join(" · ") : parsed.motif}
               </li>
               <li>
-                <em>Look</em> {generation.visualEngine === "volumetric" ? "Volumetric 3D" : "Cinema 2.5D"} · {parsed.motif}
+                <em>Model</em> {GENERATION_MODELS.find((m) => m.id === generation.modelId)?.label ?? generation.modelId}
               </li>
               <li>
                 <em>Bake</em> {output.fps} fps · {output.colorProfile.toUpperCase()} · {output.codec.toUpperCase()}

@@ -1,17 +1,40 @@
 # GPU plate worker
 
 Worldbound is the **show tool** (stage, cameras, timeline, export). High-end
-*generated* plates — the After Effects / Notch replacement when you want
-diffusion rather than cinema shaders — run on a GPU box.
+*generated* plates — Veo, Seedance, or ComfyUI diffusion — run on this worker.
+Keys stay here; the browser never sees them.
 
-## In-browser (default, no GPU)
+The worker maps a looping MP4 onto the cinema **far plate**. nDisplay cameras
+still bake every LED wall.
 
-`Cinema 2.5D` plates already produce heavy live-event looks (nebula, haze,
-figures, energy ribbons, embers, bloom, anamorphic streak, grain) and bake
-them through nDisplay cameras. Use this unless you specifically need
-photoreal diffusion.
+## In-browser (default, no GPU, no keys)
 
-## Diffusion plates (GPU)
+`Cinema 2.5D` plates already produce heavy live-event looks from the prompt
+(fire vs grid vs figures, bloom, anamorphic streak, grain) and bake them
+through nDisplay cameras. Use this unless you specifically need a generated
+video plate.
+
+## Google Veo
+
+```bash
+GEMINI_API_KEY=... npm run gpu-worker
+```
+
+Optional: `VEO_MODEL=veo-3.1-generate-preview` (Gemini `predictLongRunning`).
+The UI model **Google Veo — video plate** becomes ready when `/health` reports
+`veo: true`.
+
+## ByteDance Seedance (fal.ai)
+
+```bash
+FAL_KEY=... npm run gpu-worker
+```
+
+Optional: `SEEDANCE_MODEL=bytedance/seedance-2.5/text-to-video`.
+The UI model **ByteDance Seedance — video plate** becomes ready when `/health`
+reports `seedance: true`.
+
+## Open-source ComfyUI
 
 1. Install [ComfyUI](https://github.com/comfyanonymous/ComfyUI) on a machine
    with an NVIDIA GPU.
@@ -24,8 +47,15 @@ photoreal diffusion.
 COMFY_URL=http://127.0.0.1:8188 npm run gpu-worker
 ```
 
-5. Point the Worldbound UI at it (`/gpu` is proxied in Vite). The UI stays in
-   the browser; only plate generation leaves.
+The Comfy enqueue path is still a stub until a GPU box is attached.
 
-The worker will 501 until ComfyUI is reachable, so the rest of Worldbound
-never depends on a GPU.
+## Contract
+
+- `GET /health` → `{ ok, veo, seedance, comfy, hint }`
+- `POST /render` `{ prompt, seconds, fps, width, height, seed, model }`
+  → `202 { jobId, status }`
+- `GET /render/:jobId` until `{ status: "done", url }`
+- `GET /plates/:id.mp4` served looping master
+
+Vite proxies `/gpu` → `:8788`. The rest of Worldbound never depends on a GPU
+or an API key.
