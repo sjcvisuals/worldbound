@@ -112,19 +112,6 @@ function farFrag(): string {
       float band = exp(-pow((h - 0.28) * 6.0, 2.0));
       col += uColMid * band * (0.18 + 0.22 * uEnergy);
 
-      // Grid / laser lattice
-      float gx = abs(fract(uv.x * 22.0) - 0.5);
-      float gy = abs(fract(uv.y * 12.0 + ph * cy * 0.15) - 0.5);
-      float grid = (1.0 - smoothstep(0.0, 0.045, gx)) + (1.0 - smoothstep(0.0, 0.05, gy));
-      col += uColTop * grid * uGrid * (0.35 + 0.45 * uBeat);
-
-      // Tunnel / hyperspace
-      vec2 tp = uv - 0.5;
-      float rad = length(tp);
-      float tun = pow(0.55 + 0.45 * sin(rad * 26.0 - ph * 6.2831 * cy * 2.0), 4.0);
-      tun *= smoothstep(0.02, 0.55, rad);
-      col += mix(uColMid, uColTop, clamp(rad * 1.6, 0.0, 1.0)) * tun * uTunnel * 1.3;
-
       // Water / caustics
       float ca = fbm(uv * vec2(5.0, 9.0) + vec2(ph * cy * 1.2, sin(uv.x * 12.0 + ph * 6.28)));
       col = mix(col, mix(uColMid, uColTop, ca), uWater * 0.4);
@@ -136,6 +123,19 @@ function farFrag(): string {
       }
 
       col *= 0.7 + 0.85 * uIntensity;
+      col *= mix(1.0, 0.38, clamp(max(uGrid, uTunnel * 0.7), 0.0, 1.0));
+
+      float gx = abs(fract(uv.x * 14.0) - 0.5);
+      float gy = abs(fract(uv.y * 8.0 + ph * cy * 0.12) - 0.5);
+      float grid = (1.0 - smoothstep(0.0, 0.11, gx)) + (1.0 - smoothstep(0.0, 0.12, gy));
+      col += uColTop * grid * uGrid * (1.35 + 0.8 * uBeat);
+
+      vec2 tp = uv - 0.5;
+      float rad = length(tp);
+      float tun = pow(0.5 + 0.5 * sin(rad * 18.0 - ph * 6.2831 * cy * 2.0), 2.4);
+      tun *= smoothstep(0.02, 0.62, rad);
+      col += mix(uColMid, uColTop, clamp(rad * 1.6, 0.0, 1.0)) * tun * uTunnel * 2.8;
+
       gl_FragColor = vec4(col, 1.0);
     }
   `;
