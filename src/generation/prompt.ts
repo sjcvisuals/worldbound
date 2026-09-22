@@ -30,7 +30,7 @@ interface MotifRule {
 const MOTIF_RULES: MotifRule[] = [
   { keys: ["angel", "figure", "dancer", "silhouette", "crowd", "human", "person", "wing"], field: "figures", weight: 1, label: "figures" },
   { keys: ["fire", "flame", "ember", "lava", "inferno", "hell", "heat"], field: "fire", weight: 1, label: "fire" },
-  { keys: ["water", "ocean", "sea", "rain", "underwater", "wave", "caustic"], field: "water", weight: 1, label: "water" },
+  { keys: ["water", "ocean", "sea", "rain", "underwater", "caustic"], field: "water", weight: 1, label: "water" },
   { keys: ["grid", "neon", "laser", "geometry", "wireframe", "tron", "lattice"], field: "grid", weight: 1, label: "grid" },
   { keys: ["lightning", "bolt", "thunder", "storm", "strike"], field: "lightning", weight: 1, label: "lightning" },
   { keys: ["particle", "dust", "spark", "bokeh", "glitter", "ember"], field: "particles", weight: 0.85, label: "particles" },
@@ -40,6 +40,12 @@ const MOTIF_RULES: MotifRule[] = [
 ];
 
 export interface ParsedPrompt extends LookRecipe {}
+
+function hasKey(haystack: string, key: string): boolean {
+  if (key.includes(" ")) return haystack.includes(key);
+  const re = new RegExp(`\\b${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}s?\\b`, "i");
+  return re.test(haystack);
+}
 
 export function emptyLook(): LookRecipe {
   return {
@@ -66,7 +72,7 @@ export function parsePrompt(prompt: string): ParsedPrompt {
   const lower = (prompt || "").toLowerCase();
   const palette: string[] = [];
   for (const c of COLOR_WORDS) {
-    if (c.keys.some((k) => lower.includes(k))) {
+    if (c.keys.some((k) => hasKey(lower, k))) {
       if (!palette.includes(c.hex)) palette.push(c.hex);
     }
   }
@@ -77,7 +83,7 @@ export function parsePrompt(prompt: string): ParsedPrompt {
 
   const labels: string[] = [];
   for (const rule of MOTIF_RULES) {
-    if (rule.keys.some((k) => lower.includes(k))) {
+    if (rule.keys.some((k) => hasKey(lower, k))) {
       look[rule.field] = Math.max(look[rule.field], rule.weight);
       if (!labels.includes(rule.label)) labels.push(rule.label);
     }

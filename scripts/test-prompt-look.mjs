@@ -30,7 +30,12 @@ const cyan = parsePrompt("Cyan grid tunnel and neon geometry, clean festival loo
 ok("cyan grid on", cyan.grid >= 0.9);
 ok("cyan tunnel from grid", cyan.tunnel >= 0.3);
 ok("cyan no figures", cyan.figures < 0.05);
-ok("cyan no fire", cyan.fire < 0.05);
+ok("cyan no water from waves-of-light", cyan.water < 0.05);
+ok("gold no stars from start", gold.stars < 0.45);
+
+const startOnly = parsePrompt("Start, build, chorus, big finish. Electric blue theme.");
+ok("start does not light stars", startOnly.stars < 0.45);
+ok("start does not light figures", startOnly.figures < 0.05);
 ok("cyan palette cyan", cyan.palette.includes("#22d3ee"));
 ok("cyan tags include grid", lookTags(cyan).includes("grid"));
 
